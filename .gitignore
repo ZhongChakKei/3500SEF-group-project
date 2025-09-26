@@ -1,0 +1,54 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Node / JavaScript
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Builds
+.dist/
+dist/
+build/
+.out/
+.next/
+.cache/
+coverage/
+
+# Env & secrets
+.env
+.env.*
+*.local
+*.secret
+
+# Logs
+logs/
+*.log
+
+# IDEs/editors
+.vscode/
+.idea/
+*.swp
+
+# Python (if any)
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Java (if any)
+target/
+
+# .NET (if any)
+bin/
+obj/
+
+# Misc
+.tmp/
+.temp/

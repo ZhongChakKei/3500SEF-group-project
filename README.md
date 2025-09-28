@@ -14,13 +14,13 @@ Demo POS web app scaffold using React (Vite) frontend and a simple offline Lambd
 	- Install and run:
 
 ```powershell
-cd "g:\HKMU\yr3\Software Engineering 3500SEF\webApp\frontend"; npm i; npm run dev
+npm i; npm run dev
 ```
 
 2. Backend (offline for demo)
 
 ```powershell
-cd "g:\HKMU\yr3\Software Engineering 3500SEF\webApp\backend"; npm i; npm start
+npm i; npm start
 ```
 
 Open the app at http://localhost:5173

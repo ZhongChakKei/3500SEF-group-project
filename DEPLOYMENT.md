@@ -1,172 +1,298 @@
 # AWS Amplify Deployment Guide
 
-## Prerequisites
+## Serverless Architecture
+
+This guide covers deploying your POS web app as a **serverless application** to AWS Amplify.
+
+### Two Deployment Options:
+
+1. **Quick Deployment**: Frontend only (static site) - **Recommended for now**
+2. **Full Serverless**: Frontend + AWS Cognito + Lambda - **For production**
+
+---
+
+## Option 1: Quick Deployment (Frontend Only)
+
+Deploy just the React frontend to AWS Amplify. The backend can run locally or on a separate service.
+
+### Prerequisites
 - AWS Account with Amplify access
 - GitHub repository connected to AWS Amplify
-- Backend and Frontend code pushed to your repository
 
-## Step 1: Configure AWS Amplify
+### Step 1: Connect Your Repository
 
-### 1.1 Connect Your Repository
-1. Go to AWS Amplify Console
+1. Go to [AWS Amplify Console](https://console.aws.amazon.com/amplify/)
 2. Click "New app" → "Host web app"
 3. Choose "GitHub" as your repository service
 4. Select your repository: `ZhongChakKei/3500SEF-group-project`
 5. Select branch: `main`
 
-### 1.2 Configure Build Settings
-The build settings are already defined in `amplify.yml`. AWS Amplify will automatically detect and use this file.
+### Step 2: Configure Build Settings
 
-## Step 2: Configure Environment Variables
+AWS Amplify will automatically detect the `amplify.yml` file which is already configured for frontend-only deployment.
 
-In AWS Amplify Console, go to **App settings** → **Environment variables** and add the following:
+### Step 3: Configure Environment Variables
 
-### Backend Environment Variables (Required)
-
-| Variable Name | Value | Description |
-|--------------|-------|-------------|
-| `JWT_SECRET` | `your-super-secret-jwt-key-change-this-in-production` | Secret key for JWT signing (⚠️ Use a strong random string in production!) |
-| `JWT_EXPIRES_IN` | `24h` | Token expiration time |
-| `PORT` | `3001` | Backend API port |
-| `NODE_ENV` | `production` | Node environment |
-
-### Frontend Environment Variables (Required)
+In AWS Amplify Console, go to **App settings** → **Environment variables**:
 
 | Variable Name | Value | Description |
 |--------------|-------|-------------|
-| `VITE_API_BASE` | `https://your-backend-api-url.amplifyapp.com/api` | Backend API endpoint |
+| `VITE_API_BASE` | `https://your-backend-url/api` | Backend API endpoint |
 
-**Note:** Replace `your-backend-api-url.amplifyapp.com` with your actual backend URL after deployment.
+**For development/demo:**
+- You can use `http://localhost:3001/api` for testing
+- Or deploy backend separately (see Option 2 below)
 
-## Step 3: Generate Secure JWT Secret
+### Step 4: Deploy
 
-For production, generate a strong JWT secret key:
+1. Click "Save and deploy"
+2. AWS Amplify will build and deploy your frontend
+3. You'll get a URL like: `https://main.xxxxxxxxx.amplifyapp.com`
 
-### Using Node.js:
-```bash
-node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
-```
+### Step 5: Test
 
-### Using OpenSSL:
-```bash
-openssl rand -base64 64
-```
-
-Copy the generated string and use it as your `JWT_SECRET` in AWS Amplify environment variables.
-
-## Step 4: Deploy
-
-1. After configuring environment variables, save changes
-2. AWS Amplify will automatically trigger a deployment
-3. Monitor the build process in the Amplify Console
-4. Once deployed, you'll get two URLs:
-   - Frontend URL: `https://main.xxxxxxxxx.amplifyapp.com`
-   - Backend URL: `https://backend.xxxxxxxxx.amplifyapp.com`
-
-## Step 5: Update Frontend API Configuration
-
-After backend deployment:
-
-1. Copy your backend API URL
-2. Update the `VITE_API_BASE` environment variable in AWS Amplify Console
-3. Trigger a new frontend deployment (or it will redeploy automatically)
-
-## Step 6: Test Your Deployment
-
-### Test Backend API:
-```bash
-# Health check
-curl https://your-backend-url.amplifyapp.com/api/health
-
-# Login test
-curl -X POST https://your-backend-url.amplifyapp.com/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"admin@example.com","password":"admin123"}'
-```
-
-### Test Frontend:
-1. Open your frontend URL in a browser
-2. Try demo logins:
-   - **Admin**: admin@example.com / admin123
-   - **User**: user@example.com / user123
-3. Test protected routes and role-based access
-
-## Demo User Accounts
-
-Your deployed application includes these demo accounts:
-
-| Email | Password | Role |
-|-------|----------|------|
-| admin@example.com | admin123 | admin |
-| user@example.com | user123 | user |
-
-**⚠️ Security Warning:** Change or remove these demo accounts in production!
-
-## Troubleshooting
-
-### Backend Issues:
-- Check CloudWatch logs in AWS Console
-- Verify environment variables are set correctly
-- Ensure JWT_SECRET is set
-
-### Frontend Issues:
-- Verify VITE_API_BASE points to correct backend URL
-- Check browser console for CORS errors
-- Ensure backend is deployed and accessible
-
-### CORS Issues:
-If you encounter CORS errors, update the CORS configuration in `backend/src/app.js`:
-```javascript
-app.use(cors({
-  origin: 'https://your-frontend-url.amplifyapp.com',
-  credentials: true
-}));
-```
-
-## Continuous Deployment
-
-AWS Amplify automatically deploys when you push to the `main` branch:
-
-1. Make code changes locally
-2. Commit and push to GitHub:
-   ```bash
-   git add .
-   git commit -m "Your commit message"
-   git push origin main
-   ```
-3. AWS Amplify automatically detects changes and redeploys
-
-## Production Checklist
-
-Before going live:
-
-- [ ] Generate and set a strong JWT_SECRET
-- [ ] Update CORS origins to production URL
-- [ ] Remove or change demo user accounts
-- [ ] Set up proper database (replace in-memory user store)
-- [ ] Enable HTTPS (Amplify does this automatically)
-- [ ] Set up monitoring and logging
-- [ ] Configure custom domain (optional)
-- [ ] Test all authentication flows
-- [ ] Test role-based access control
-
-## Custom Domain (Optional)
-
-1. Go to AWS Amplify Console
-2. Navigate to **App settings** → **Domain management**
-3. Click **Add domain**
-4. Follow the wizard to configure your custom domain
-5. Update environment variables with new domain
-
-## Support
-
-For issues or questions:
-- Check AWS Amplify documentation
-- Review CloudWatch logs
-- Check this repository's Issues section
+Visit your Amplify URL and test:
+- ✅ Frontend loads correctly
+- ⚠️ Login won't work until backend is accessible
 
 ---
 
-**Last Updated:** October 3, 2025
-**Project:** 3500SEF Group Project
-**Repository:** github.com/ZhongChakKei/3500SEF-group-project
+## Option 2: Full Serverless (Recommended for Production)
+
+For a truly serverless architecture, use AWS Amplify with Cognito authentication.
+
+### Why Go Serverless?
+
+✅ **No servers to manage** - AWS handles infrastructure
+✅ **Auto-scaling** - Handles any traffic level automatically  
+✅ **Cost-effective** - Pay only for what you use (~$0-5/month for small projects)
+✅ **Built-in security** - AWS manages authentication, encryption
+✅ **High availability** - 99.99% uptime SLA
+
+### Step 1: Install Amplify CLI
+
+```powershell
+npm install -g @aws-amplify/cli
+amplify configure
+```
+
+Follow the prompts to configure with your AWS credentials.
+
+### Step 2: Initialize Amplify in Your Project
+
+```powershell
+cd frontend
+amplify init
+```
+
+Answer the prompts:
+- Name: `sef-pos-app`
+- Environment: `dev` or `prod`
+- Editor: Visual Studio Code
+- Framework: JavaScript/React
+- Source directory: `src`
+- Distribution directory: `dist`
+- Build command: `npm run build`
+- Start command: `npm run dev`
+
+### Step 3: Add Authentication with Cognito
+
+```powershell
+amplify add auth
+```
+
+Choose:
+- ✅ Default configuration
+- ✅ Email for sign-in
+- ✅ No advanced settings (or customize as needed)
+
+This creates:
+- AWS Cognito User Pool (manages users)
+- AWS Cognito Identity Pool (for AWS resource access)
+- Automatic JWT token management
+
+### Step 4: Add API (Optional - for custom business logic)
+
+```powershell
+amplify add api
+```
+
+Choose:
+- REST API
+- Create a new Lambda function
+- Use the provided templates or create custom endpoints
+
+### Step 5: Push to AWS
+
+```powershell
+amplify push
+```
+
+This will:
+- Create all AWS resources (Cognito, Lambda, API Gateway)
+- Generate configuration file (`aws-exports.js`)
+- Deploy everything to AWS
+
+### Step 6: Update Frontend Code
+
+Install Amplify libraries:
+
+```powershell
+npm install aws-amplify @aws-amplify/ui-react
+```
+
+### Step 7: Deploy Frontend to Amplify Hosting
+
+```powershell
+amplify add hosting
+```
+
+Choose:
+- Hosting with Amplify Console
+- Manual deployment (or continuous deployment)
+
+```powershell
+amplify publish
+```
+
+---
+
+## Backend Deployment Options (If Not Using Amplify/Cognito)
+
+If you want to keep your Express backend with JWT:
+
+### Option A: Deploy Backend to Railway (Free Tier)
+
+1. Go to [Railway.app](https://railway.app)
+2. Connect your GitHub repository
+3. Select backend folder
+4. Add environment variables
+5. Deploy
+
+### Option B: Deploy Backend to Render (Free Tier)
+
+1. Go to [Render.com](https://render.com)
+2. Create new Web Service
+3. Connect GitHub repository
+4. Root directory: `backend`
+5. Build command: `npm install`
+6. Start command: `npm start`
+7. Add environment variables
+8. Deploy
+
+### Option C: AWS Lambda (Serverless)
+
+Convert your Express backend to Lambda functions using AWS SAM or Serverless Framework.
+
+---
+
+## Migration to AWS Cognito (Detailed)
+
+### Update Frontend to Use Cognito
+
+1. **Configure Amplify** (`frontend/src/main.jsx`):
+
+```javascript
+import { Amplify } from 'aws-amplify';
+import awsExports from './aws-exports';
+
+Amplify.configure(awsExports);
+```
+
+2. **Update AuthContext** to use Cognito:
+
+```javascript
+import { Auth } from 'aws-amplify';
+
+// Login
+const login = async (email, password) => {
+  try {
+    const user = await Auth.signIn(email, password);
+    setUser(user);
+    return { success: true, user };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+};
+
+// Register
+const register = async (email, password, name) => {
+  try {
+    await Auth.signUp({
+      username: email,
+      password,
+      attributes: { email, name }
+    });
+    return { success: true };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+};
+
+// Logout
+const logout = async () => {
+  await Auth.signOut();
+  setUser(null);
+};
+
+// Get current user
+const fetchUser = async () => {
+  try {
+    const user = await Auth.currentAuthenticatedUser();
+    setUser(user);
+  } catch (error) {
+    setUser(null);
+  }
+};
+```
+
+3. **Add User Groups for Roles** (in AWS Cognito Console):
+   - Create groups: `Admin`, `User`
+   - Assign users to groups
+   - Check group membership in your app
+
+---
+
+## Cost Estimates
+
+### Current Setup (Express Backend)
+- Express server on Railway/Render: $0-7/month (free tier limited)
+- AWS Amplify frontend: $0-5/month
+- **Total: ~$5-12/month**
+
+### Full Serverless (AWS Amplify + Cognito)
+- AWS Cognito: Free (up to 50,000 users/month)
+- AWS Lambda: Free (1M requests/month)
+- API Gateway: Free (1M requests/month)
+- AWS Amplify: Free (1,000 build minutes/month)
+- DynamoDB: Free (25GB storage, 25 RCU/WCU)
+- **Total: $0-5/month** (likely $0 for small projects)
+
+---
+
+## Recommended Approach
+
+### For Learning/Demo:
+✅ **Deploy frontend to AWS Amplify** (static hosting)
+✅ Keep backend local or use free tier service
+✅ Use current JWT authentication
+✅ Quick and simple
+
+### For Production:
+✅ **Use AWS Amplify + Cognito**
+✅ Convert backend logic to Lambda functions  
+✅ Use DynamoDB for data storage
+✅ Truly serverless and scalable
+✅ See `SERVERLESS.md` for detailed guide
+
+---
+
+## Next Steps
+
+1. ✅ Deploy frontend to AWS Amplify now (Option 1)
+2. 📖 Read `SERVERLESS.md` for serverless architecture details
+3. 🔄 Later: Migrate to AWS Amplify + Cognito (Option 2)
+
+---
+
+**For detailed serverless architecture guide, see [SERVERLESS.md](./SERVERLESS.md)**

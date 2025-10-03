@@ -84,18 +84,44 @@ VITE_API_BASE=http://localhost:3001/api
 
 ## Deployment
 
-See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed AWS Amplify deployment instructions.
+### Quick Answer: Do I need a backend for serverless?
 
-### Quick Deploy to AWS Amplify
+**No!** For true serverless on AWS Amplify, you use AWS Cognito for authentication instead of an Express backend.
 
-1. Connect your GitHub repository to AWS Amplify
-2. Configure environment variables in Amplify Console:
-   - `JWT_SECRET` (generate a strong random key)
-   - `JWT_EXPIRES_IN=24h`
-   - `NODE_ENV=production`
-   - `VITE_API_BASE` (your backend API URL)
-3. Push to `main` branch - auto-deployment will trigger
-4. Test your deployed application
+**Two Options:**
+
+1. **Quick Demo** (Recommended for now):
+   - Deploy frontend to AWS Amplify (static hosting)
+   - Keep backend local for development
+   - Takes 10 minutes
+
+2. **Production Serverless**:
+   - Use AWS Amplify + Cognito (no backend server needed!)
+   - Truly serverless, auto-scales, costs ~$0-5/month
+   - See migration guide below
+
+### Quick Deploy (Frontend Only)
+
+```powershell
+# 1. Push to GitHub
+git add .
+git commit -m "Deploy to Amplify"
+git push origin main
+
+# 2. Configure AWS Amplify Console
+# - Connect GitHub repository
+# - AWS auto-detects amplify.yml
+# - Set VITE_API_BASE environment variable
+# - Deploy!
+```
+
+**Time:** 10 minutes  
+**Cost:** $0 (free tier)
+
+See detailed guides:
+- 📖 **[SERVERLESS_EXPLAINED.md](./SERVERLESS_EXPLAINED.md)** - Start here! Explains everything
+- 📖 **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Step-by-step deployment guide
+- 📖 **[SERVERLESS.md](./SERVERLESS.md)** - Full serverless migration guide
 
 ## Development
 

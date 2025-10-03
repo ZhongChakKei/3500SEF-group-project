@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-export const API_BASE = import.meta?.env?.VITE_API_BASE || 'http://localhost:3001/api';
+// For frontend-only setup, default to empty string so axios uses relative URLs if any are called.
+// If you add a backend later, set VITE_API_BASE in .env.
+export const API_BASE = import.meta?.env?.VITE_API_BASE || '';
 
 // Create axios instance with default config
 const api = axios.create({

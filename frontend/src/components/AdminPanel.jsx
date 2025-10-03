@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../modules/auth/AuthContext.jsx';
-import api from '../lib/api.js';
+import api, { API_BASE } from '../lib/api.js';
 
 export default function AdminPanel() {
   const { user, isAdmin } = useAuth();
@@ -52,37 +52,50 @@ export default function AdminPanel() {
       
       <div style={{ marginTop: '30px' }}>
         <h3>API Testing</h3>
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-          <button
-            onClick={testAdminEndpoint}
-            disabled={loading}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: '#dc3545',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: loading ? 'not-allowed' : 'pointer'
-            }}
-          >
-            Test Admin-Only Endpoint
-          </button>
-          
-          <button
-            onClick={testProtectedEndpoint}
-            disabled={loading}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: '#28a745',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: loading ? 'not-allowed' : 'pointer'
-            }}
-          >
-            Test Protected Endpoint
-          </button>
-        </div>
+        {!API_BASE ? (
+          <div style={{
+            padding: '10px',
+            backgroundColor: '#fff3cd',
+            color: '#856404',
+            border: '1px solid #ffeeba',
+            borderRadius: '4px',
+            marginBottom: '15px'
+          }}>
+            Backend API is not configured. Set VITE_API_BASE in your frontend .env to enable API tests.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+            <button
+              onClick={testAdminEndpoint}
+              disabled={loading}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: '#dc3545',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: loading ? 'not-allowed' : 'pointer'
+              }}
+            >
+              Test Admin-Only Endpoint
+            </button>
+            
+            <button
+              onClick={testProtectedEndpoint}
+              disabled={loading}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: '#28a745',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: loading ? 'not-allowed' : 'pointer'
+              }}
+            >
+              Test Protected Endpoint
+            </button>
+          </div>
+        )}
         
         {loading && <p>Loading...</p>}
         

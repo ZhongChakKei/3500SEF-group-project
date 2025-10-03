@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import api from '../../lib/api.js';
+import api, { API_BASE } from '../../lib/api.js';
 
 const AuthContext = createContext(null);
 
@@ -16,8 +16,10 @@ export function AuthProvider({ children }) {
       try {
         const parsedUser = JSON.parse(userData);
         setUser(parsedUser);
-        // Verify token is still valid by fetching profile
-        fetchProfile();
+        // If a backend API is configured, verify token is still valid by fetching profile
+        if (API_BASE) {
+          fetchProfile();
+        }
       } catch (error) {
         console.error('Error parsing user data:', error);
         logout();
@@ -27,6 +29,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const fetchProfile = async () => {
+    if (!API_BASE) return; // No backend in frontend-only mode
     try {
       const response = await api.get('/auth/profile');
       if (response.data.success) {
@@ -40,6 +43,19 @@ export function AuthProvider({ children }) {
   };
 
   const login = async (email, password) => {
+    // Frontend-only mode: simulate login
+    if (!API_BASE) {
+      const demoUser = {
+        id: 'demo',
+        email,
+        name: email === 'admin@example.com' ? 'Admin User' : 'Demo User',
+        role: email === 'admin@example.com' ? 'admin' : 'user',
+      };
+      localStorage.setItem('authToken', 'demo-token');
+      localStorage.setItem('user', JSON.stringify(demoUser));
+      setUser(demoUser);
+      return { success: true, user: demoUser };
+    }
     try {
       const response = await api.post('/auth/login', { email, password });
       
@@ -62,6 +78,19 @@ export function AuthProvider({ children }) {
   };
 
   const register = async (email, password, name, role = 'user') => {
+    // Frontend-only mode: simulate registration
+    if (!API_BASE) {
+      const demoUser = {
+        id: 'demo',
+        email,
+        name: name || 'Demo User',
+        role: role || 'user',
+      };
+      localStorage.setItem('authToken', 'demo-token');
+      localStorage.setItem('user', JSON.stringify(demoUser));
+      setUser(demoUser);
+      return { success: true, user: demoUser };
+    }
     try {
       const response = await api.post('/auth/register', { 
         email, 

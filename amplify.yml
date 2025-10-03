@@ -1,18 +1,36 @@
 version: 1
 applications:
+  # Backend API with JWT Authentication
   - backend:
-      phases:
-        build:
-          commands:
-            - '# Execute commands to build your backend'
-            - npm install
-    frontend:
       phases:
         preBuild:
           commands:
+            - echo "Installing backend dependencies..."
             - npm ci
         build:
           commands:
+            - echo "Backend build completed"
+            - echo "Backend will be deployed as serverless functions"
+      artifacts:
+        baseDirectory: .
+        files:
+          - '**/*'
+          - .env
+      cache:
+        paths:
+          - node_modules/**/*
+    appRoot: backend
+    
+  # Frontend React Application
+  - frontend:
+      phases:
+        preBuild:
+          commands:
+            - echo "Installing frontend dependencies..."
+            - npm ci
+        build:
+          commands:
+            - echo "Building frontend application..."
             - npm run build
       artifacts:
         baseDirectory: dist
@@ -22,4 +40,11 @@ applications:
         paths:
           - node_modules/**/*
     appRoot: frontend
-  - appRoot: backend
+    
+# Environment variables for backend (configure these in AWS Amplify Console)
+# Required environment variables:
+# - JWT_SECRET: Secret key for JWT token signing (generate a strong random string)
+# - JWT_EXPIRES_IN: Token expiration time (e.g., "24h", "7d")
+# - PORT: Backend port (default: 3001)
+# - NODE_ENV: Environment mode (production)
+# - VITE_API_BASE: Frontend API base URL (will be your backend API URL)

@@ -1,6 +1,7 @@
-import React from 'react'
+import React from 'react';
+import AdminPanel from '../../components/AdminPanel.jsx';
 
-export default function Settings(){
+export default function Settings() {
   return (
     <div>
       <h3>Settings / Admin</h3>
@@ -8,6 +9,10 @@ export default function Settings(){
         <li>Branch Management</li>
         <li>User & Role Management</li>
       </ul>
+      
+      <hr style={{ margin: '20px 0' }} />
+      
+      <AdminPanel />
     </div>
-  )
+  );
 }

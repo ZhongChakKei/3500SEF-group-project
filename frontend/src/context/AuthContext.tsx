@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { env } from '../utils/env';
-import jwtDecode from 'jwt-decode';
+import { jwtDecode } from 'jwt-decode';
 
 interface DecodedIdToken {
   sub: string;
@@ -112,15 +112,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const url = new URL(window.location.href);
     const code = url.searchParams.get('code');
     if (!code) return;
+    
     const verifier = sessionStorage.getItem('pkce_verifier');
-    if (!verifier) throw new Error('Missing PKCE verifier');
+    if (!verifier) {
+      console.error('Missing PKCE verifier - redirecting to login');
+      // Clear the URL and redirect to landing page
+      window.location.href = '/';
+      return;
+    }
+    
     setLoading(true);
     try {
       await exchangeCode(code, verifier);
+      sessionStorage.removeItem('pkce_verifier'); // Clean up
       // Clean URL
       url.searchParams.delete('code');
       url.searchParams.delete('state');
       window.history.replaceState({}, document.title, url.pathname);
+    } catch (error) {
+      console.error('Token exchange failed:', error);
+      sessionStorage.removeItem('pkce_verifier');
+      // Redirect to login on error
+      window.location.href = '/';
     } finally {
       setLoading(false);
     }

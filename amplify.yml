@@ -1,10 +1,9 @@
 version: 1
 
 # Amplify build spec for React + Vite + TypeScript app located in ./frontend
-# (Previous version failed: used wrong path prefix 'webApp/frontend')
 # - Vite build outputs to frontend/dist
-# - Environment variables (VITE_*) are set in Amplify Console (App settings > Environment variables)
-# - Lambda Function URL + Cognito details should be provided as VITE_* vars
+# - SPA routing handled by frontend/public/_redirects (deployed with build)
+# - Environment variables (VITE_*) should be managed in Amplify Console per environment
 
 frontend:
   phases:
@@ -26,11 +25,6 @@ frontend:
     paths:
       - frontend/node_modules/**/*
 
-env:
-  variables:
-    # Placeholder (real values must be set via Amplify Console UI):
-    VITE_OAUTH_SCOPES: "openid profile email read.inventory reserve.stock"
-
 # Optional test phase template:
 # test:
 #   phases:
@@ -42,6 +36,7 @@ env:
 
 # Notes:
 # 1. Ensure this file is at repository root for Amplify detection.
-# 2. Add environment variables: VITE_API_BASE_URL, VITE_COGNITO_REGION, VITE_COGNITO_USER_POOL_ID,
-#    VITE_COGNITO_CLIENT_ID, VITE_COGNITO_DOMAIN, VITE_REDIRECT_URI, VITE_LOGOUT_URI.
+# 2. Add environment variables in Amplify Console: VITE_API_BASE_URL, VITE_COGNITO_REGION,
+#    VITE_COGNITO_USER_POOL_ID, VITE_COGNITO_CLIENT_ID, VITE_COGNITO_DOMAIN,
+#    VITE_REDIRECT_URI, VITE_LOGOUT_URI, VITE_OAUTH_SCOPES.
 # 3. After first deploy, verify Hosted UI redirect works (Cognito callback matches Amplify domain + /callback).

@@ -6,6 +6,8 @@ interface DecodedIdToken {
   sub: string;
   email?: string;
   name?: string;
+  'cognito:username'?: string;  // Cognito username field
+  preferred_username?: string;
   [k: string]: any;
 }
 

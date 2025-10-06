@@ -1,16 +1,14 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { env } from '../utils/env';
+import { useAuth } from '../context/AuthContext';
 
 const LandingPage: React.FC = () => {
   const DEV_MODE = import.meta.env.DEV && import.meta.env.VITE_DEV_MODE === 'true';
+  const { login } = useAuth();
   
   const handleLogin = () => {
-    const scopes = env.oauthScopes.join(' ');
-    
-    const loginUrl = `https://${env.cognitoDomain}/login?client_id=${env.cognitoClientId}&response_type=code&scope=${scopes.replace(/ /g, '+')}&redirect_uri=${encodeURIComponent(env.redirectUri)}`;
-    
-    window.location.href = loginUrl;
+    // Use AuthContext's login method which handles PKCE properly
+    login();
   };
 
   return (

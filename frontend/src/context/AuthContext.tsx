@@ -103,9 +103,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const json = await resp.json();
     const expires_at = Date.now() + json.expires_in * 1000;
     const bundle: TokenBundle = { ...json, expires_at };
+    
+    // Store in localStorage first
     localStorage.setItem(STORAGE_KEY, JSON.stringify(bundle));
+    
+    // Update React state
     setTokens(bundle);
     try { setUser(jwtDecode(bundle.id_token)); } catch { setUser(null); }
+    
+    // Return the bundle for use in callback
+    return bundle;
   };
 
   const handleRedirectCallback = useCallback(async () => {
@@ -116,23 +123,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const verifier = sessionStorage.getItem('pkce_verifier');
     if (!verifier) {
       console.error('Missing PKCE verifier - redirecting to login');
-      // Clear the URL and redirect to landing page
       window.location.href = '/';
       return;
     }
     
     setLoading(true);
     try {
+      // Exchange code for tokens
       await exchangeCode(code, verifier);
-      sessionStorage.removeItem('pkce_verifier'); // Clean up
-      // Clean URL
-      url.searchParams.delete('code');
-      url.searchParams.delete('state');
-      window.history.replaceState({}, document.title, url.pathname);
+      sessionStorage.removeItem('pkce_verifier');
+      
+      // Small delay to ensure localStorage write is complete
+      // This prevents race condition where redirect happens before storage is persisted
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Redirect to dashboard after tokens are securely stored
+      window.location.replace('/dashboard');
     } catch (error) {
       console.error('Token exchange failed:', error);
       sessionStorage.removeItem('pkce_verifier');
-      // Redirect to login on error
       window.location.href = '/';
     } finally {
       setLoading(false);

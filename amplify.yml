@@ -1,7 +1,8 @@
 version: 1
 
-# Amplify build spec for React + Vite + TypeScript app located in webApp/frontend
-# - Vite build outputs to webApp/frontend/dist
+# Amplify build spec for React + Vite + TypeScript app located in ./frontend
+# (Previous version failed: used wrong path prefix 'webApp/frontend')
+# - Vite build outputs to frontend/dist
 # - Environment variables (VITE_*) are set in Amplify Console (App settings > Environment variables)
 # - Lambda Function URL + Cognito details should be provided as VITE_* vars
 
@@ -10,20 +11,20 @@ frontend:
     preBuild:
       commands:
         - echo "[PreBuild] Installing dependencies"
-        - cd webApp/frontend
+  - cd frontend
         - npm ci || npm install
     build:
       commands:
         - echo "[Build] Running Vite build"
-        - npm run build
+  - npm run build
         - echo "[Build] Build complete"
   artifacts:
-    baseDirectory: webApp/frontend/dist
+    baseDirectory: frontend/dist
     files:
       - '**/*'
   cache:
     paths:
-      - webApp/frontend/node_modules/**/*
+      - frontend/node_modules/**/*
 
 env:
   variables:

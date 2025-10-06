@@ -6,6 +6,8 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import ProductsPage from './pages/ProductsPage';
 import ProductDetailPage from './pages/ProductDetailPage';
+import AddProductPage from './pages/AddProductPage';
+import AddVariantPage from './pages/AddVariantPage';
 import InventoryPage from './pages/InventoryPage';
 import CallbackPage from './pages/CallbackPage';
 import Layout from './components/Layout';
@@ -45,7 +47,9 @@ const App: React.FC = () => {
       <Route path="/callback" element={<CallbackPage />} />
       <Route path="/dashboard" element={<ProtectedRoute><Layout><DashboardPage /></Layout></ProtectedRoute>} />
       <Route path="/products" element={<ProtectedRoute><Layout><ProductsPage /></Layout></ProtectedRoute>} />
+      <Route path="/products/new" element={<ProtectedRoute><Layout><AddProductPage /></Layout></ProtectedRoute>} />
       <Route path="/products/:productId" element={<ProtectedRoute><Layout><ProductDetailPage /></Layout></ProtectedRoute>} />
+      <Route path="/products/:productId/variants/new" element={<ProtectedRoute><Layout><AddVariantPage /></Layout></ProtectedRoute>} />
       <Route path="/inventory" element={<ProtectedRoute><Layout><InventoryPage /></Layout></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

@@ -28,7 +28,12 @@ const ProductsPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <h2 className="text-xl font-semibold">Products</h2>
-        <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search..." className="border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+        <div className="flex items-center gap-3">
+          <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search..." className="border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+          <Link to="/products/new" className="bg-brand-500 text-white px-4 py-2 rounded text-sm hover:bg-brand-600">
+            + Add Product
+          </Link>
+        </div>
       </div>
       {loading && <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
         {Array.from({ length: 8 }).map((_, i) => <div key={i} className="h-40 bg-gray-200 animate-pulse rounded" />)}

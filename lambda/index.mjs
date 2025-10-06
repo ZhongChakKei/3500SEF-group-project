@@ -1,194 +1,273 @@
-// Distributed Inventory & Sales - Dataset Fetch Lambda (Node.js 18+)
-// Single Lambda (Function URL compatible) that reads dataset JSON files from S3 and serves
-// read-only endpoints:
-//   GET /products
-//   GET /variants?product_id=...
-//   GET /inventory?variant_id=V-... | ?location_id=...
-// CORS enabled. Simple in-memory caching to reduce S3 calls.
+// Node.js 18+ Lambda for Function URL
+// ENV required:
+// TABLE_NAME=dist-inventory
+// ALLOWED_ORIGIN=https://<your-frontend>  (use * while testing)
+// REQUIRE_AUTH=false  (set to true when Cognito is ready)
+// OAUTH_ISSUER=https://cognito-idp.us-east-2.amazonaws.com/<USER_POOL_ID>
+// REQUIRED_SCOPES=read.inventory,reserve.stock  (optional; for access-token scope checks)
 
-import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import {
+  DynamoDBDocumentClient, QueryCommand, GetCommand, UpdateCommand, TransactWriteCommand
+} from "@aws-sdk/lib-dynamodb";
+import * as jose from "jose";
 
-// ----------- Environment Configuration ----------- //
-const {
-  BUCKET_NAME,
-  PRODUCTS_KEY = 'products.json',
-  VARIANTS_KEY = 'variants.json',
-  INVENTORY_KEY = 'inventory.json',
-  LOCATIONS_KEY = 'locations.json',
-  DATA_CACHE_TTL_SECONDS = '60'
-} = process.env;
+const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+const TABLE = process.env.TABLE_NAME;
+const ORIGIN = process.env.ALLOWED_ORIGIN || "*";
+const REQUIRE_AUTH = String(process.env.REQUIRE_AUTH || "false").toLowerCase() === "true";
+const ISSUER = process.env.OAUTH_ISSUER || ""; // e.g. https://cognito-idp.us-east-2.amazonaws.com/us-east-2_AbC123456
+const REQUIRED_SCOPES = (process.env.REQUIRED_SCOPES || "")
+  .split(",").map(s => s.trim()).filter(Boolean);
 
-if (!BUCKET_NAME) {
-  console.warn('[WARN] BUCKET_NAME not set. Lambda will fail for data fetch.');
-}
+const respond = (code, body) => ({
+  statusCode: code,
+  headers: {
+    "content-type": "application/json",
+    "access-control-allow-origin": ORIGIN,
+    "access-control-allow-headers": "authorization,content-type",
+    "access-control-allow-methods": "GET,POST,OPTIONS"
+  },
+  body: JSON.stringify(body)
+});
 
-const CACHE_TTL = parseInt(DATA_CACHE_TTL_SECONDS, 10) || 60; // seconds
+async function requireJwt(event) {
+  if (!REQUIRE_AUTH) return; // auth disabled for initial smoke test
+  const auth = event.headers?.authorization || event.headers?.Authorization;
+  if (!auth?.startsWith("Bearer ")) throw new Error("401:no_bearer");
+  const token = auth.slice(7);
 
-// ----------- AWS SDK Client ----------- //
-const s3 = new S3Client({}); // region inferred from Lambda execution environment
+  // Verify Cognito access token
+  const JWKS = jose.createRemoteJWKSet(new URL(`${ISSUER}/.well-known/jwks.json`));
+  const { payload } = await jose.jwtVerify(token, JWKS, { issuer: ISSUER });
 
-// ----------- In-Memory Cache ----------- //
-let cache = {
-  loadedAt: 0,
-  products: null,
-  variants: null,
-  inventory: null,
-  locations: null
-};
+  // Must be an ACCESS token
+  if (payload.token_use !== "access") throw new Error("401:not_access_token");
 
-async function streamToString(stream) {
-  if (typeof stream.transformToString === 'function') {
-    // (Node.js 18 AWS SDK provides transformToString on the body)
-    return await stream.transformToString();
+  // Optional scope check
+  if (REQUIRED_SCOPES.length) {
+    const scopes = String(payload.scope || "").split(" ");
+    const missing = REQUIRED_SCOPES.filter(s => !scopes.includes(s));
+    if (missing.length) throw new Error("403:missing_scopes");
   }
-  return await new Promise((resolve, reject) => {
-    const chunks = [];
-    stream.on('data', (c) => chunks.push(c));
-    stream.on('error', reject);
-    stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
-  });
-}
-
-async function getJsonObject(Key) {
-  const res = await s3.send(new GetObjectCommand({ Bucket: BUCKET_NAME, Key }));
-  const text = await streamToString(res.Body);
-  try {
-    return JSON.parse(text);
-  } catch (e) {
-    console.error('Failed parsing JSON for', Key, e);
-    throw new Error(`Invalid JSON in ${Key}`);
-  }
-}
-
-async function loadDataIfNeeded(force = false) {
-  const now = Date.now();
-  if (!force && cache.loadedAt && (now - cache.loadedAt) < CACHE_TTL * 1000) {
-    return cache; // still valid
-  }
-  console.log('[INFO] Loading dataset from S3...');
-  const [products, variants, inventory, locations] = await Promise.all([
-    getJsonObject(PRODUCTS_KEY),
-    getJsonObject(VARIANTS_KEY),
-    getJsonObject(INVENTORY_KEY),
-    getJsonObject(LOCATIONS_KEY).catch(() => []) // optional
-  ]);
-  cache = { products, variants, inventory, locations, loadedAt: now };
-  console.log('[INFO] Dataset loaded. Sizes:', {
-    products: products?.length,
-    variants: variants?.length,
-    inventory: inventory?.length,
-    locations: locations?.length
-  });
-  return cache;
-}
-
-function corsHeaders(extra = {}) {
-  return {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-    'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-    ...extra
-  };
-}
-
-function jsonResponse(statusCode, bodyObj, extraHeaders = {}) {
-  return {
-    statusCode,
-    headers: corsHeaders({ 'Content-Type': 'application/json', ...extraHeaders }),
-    body: JSON.stringify(bodyObj)
-  };
-}
-
-async function handleProducts(query, data) {
-  let items = data.products || [];
-  const q = query?.q?.trim();
-  if (q) {
-    const qLower = q.toLowerCase();
-    items = items.filter(p =>
-      (p.title && p.title.toLowerCase().includes(qLower)) ||
-      (p.product_id && p.product_id.toLowerCase().includes(qLower))
-    );
-  }
-  return jsonResponse(200, { items });
-}
-
-async function handleVariants(query, data) {
-  const productId = query?.product_id;
-  if (!productId) return jsonResponse(400, { error: 'product_id required' });
-  const items = (data.variants || []).filter(v => v.product_id === productId);
-  return jsonResponse(200, { items });
-}
-
-async function handleInventory(query, data) {
-  const { variant_id, location_id } = query || {};
-  let items = data.inventory || [];
-  if (variant_id) {
-    items = items.filter(i => i.variantId === variant_id);
-  }
-  if (location_id) {
-    items = items.filter(i => i.locationId === location_id);
-  }
-  return jsonResponse(200, { items });
-}
-
-// (Optional) stub handlers for future write operations
-async function handleReserve(body, data) {
-  // This dataset fetch Lambda is read-only; you would normally integrate with DynamoDB to atomically reserve.
-  return jsonResponse(501, { error: 'Not Implemented: reserve logic requires DynamoDB write operations' });
-}
-
-async function handleOrders(body, data) {
-  return jsonResponse(501, { error: 'Not Implemented: order creation requires persistent store' });
 }
 
 export const handler = async (event) => {
   try {
-    if (event.requestContext?.http?.method === 'OPTIONS') {
-      return { statusCode: 200, headers: corsHeaders(), body: '' };
-    }
+    const method = event.requestContext?.http?.method || event.httpMethod || "GET";
+    const path = (event.rawPath || event.path || "/").toLowerCase();
+    if (method === "OPTIONS") return respond(200, { ok: true });
 
-    const method = event.requestContext?.http?.method || event.httpMethod;
-    const path = (event.rawPath || event.path || '/').replace(/\/$/, '');
-    const query = event.queryStringParameters || {};
-    const body = event.body ? (() => { try { return JSON.parse(event.body); } catch { return {}; } })() : {};
+    await requireJwt(event); // no-op until REQUIRE_AUTH=true
 
-    // Load data (cached)
-    const data = await loadDataIfNeeded();
+    if (method === "GET" && path === "/products") return listProducts();
+    if (method === "POST" && path === "/products") return createProduct(event);
+    if (method === "GET" && path === "/variants") return listVariants(event);
+    if (method === "POST" && path === "/variants") return createVariant(event);
+    if (method === "GET" && path === "/inventory") return getInventory(event);
+    if (method === "POST" && path === "/reserve") return reserveStock(event);
+    if (method === "POST" && path === "/orders") return createAndCommitOrder(event);
 
-    if (method === 'GET' && path === '/products') {
-      return await handleProducts(query, data);
-    }
-    if (method === 'GET' && path === '/variants') {
-      return await handleVariants(query, data);
-    }
-    if (method === 'GET' && path === '/inventory') {
-      return await handleInventory(query, data);
-    }
-    if (method === 'POST' && path === '/reserve') {
-      return await handleReserve(body, data);
-    }
-    if (method === 'POST' && path === '/orders') {
-      return await handleOrders(body, data);
-    }
-    if (method === 'GET' && path === '/health') {
-      return jsonResponse(200, { ok: true, loadedAt: cache.loadedAt, cacheTtlSeconds: CACHE_TTL });
-    }
-
-    return jsonResponse(404, { error: 'Not Found', path });
-  } catch (err) {
-    console.error('Unhandled error', err);
-    return jsonResponse(500, { error: 'Internal Server Error', message: err.message });
+    return respond(404, { error: "Not Found" });
+  } catch (e) {
+    if (String(e.message).startsWith("401")) return respond(401, { error: "Unauthorized" });
+    if (String(e.message).startsWith("403")) return respond(403, { error: "Forbidden" });
+    if (e.name === "TransactionCanceledException") return respond(409, { error: "Stock changed; refresh" });
+    if (e.name === "ConditionalCheckFailedException") return respond(409, { error: "Insufficient stock" });
+    console.error(e);
+    return respond(500, { error: "Server error" });
   }
 };
 
-// For local testing with `node index.mjs` (mock event)
-if (process.env.LOCAL_TEST) {
-  (async () => {
-    const res = await handler({
-      requestContext: { http: { method: 'GET' } },
-      rawPath: '/products',
-      queryStringParameters: {}
-    });
-    console.log('Local test response:', res.statusCode, res.body.slice(0, 120) + '...');
-  })();
+/* ---------- Endpoints ---------- */
+
+async function listProducts() {
+  const q = new QueryCommand({
+    TableName: TABLE,
+    KeyConditionExpression: "PK = :t",
+    ExpressionAttributeValues: { ":t": "TYPE#PRODUCT" }
+  });
+  const { Items = [] } = await ddb.send(q);
+  const items = Items.map(p => ({
+    product_id: p.productId, title: p.title, brand: p.brand, category: p.category,
+    default_image: p.default_image, attributes: tryJson(p.attributes)
+  }));
+  return respond(200, { items });
 }
+
+async function createProduct(event) {
+  const { product_id, title, brand, category, default_image, attributes } = parseBody(event.body);
+  if (!product_id || !title || !brand || !category)
+    return respond(400, { error: "product_id, title, brand, category required" });
+
+  const item = {
+    PK: "TYPE#PRODUCT",
+    SK: `PRODUCT#${product_id}`,
+    productId: product_id,
+    title,
+    brand,
+    category,
+    default_image: default_image || null,
+    attributes: attributes ? JSON.stringify(attributes) : null,
+    createdAt: new Date().toISOString()
+  };
+
+  const cmd = new TransactWriteCommand({
+    TransactItems: [{
+      Put: {
+        TableName: TABLE,
+        Item: item,
+        ConditionExpression: "attribute_not_exists(PK)"
+      }
+    }]
+  });
+
+  await ddb.send(cmd);
+  return respond(201, { ok: true, product_id });
+}
+
+async function listVariants(event) {
+  const productId = event.queryStringParameters?.product_id;
+  if (!productId) return respond(400, { error: "product_id required" });
+  const q = new QueryCommand({
+    TableName: TABLE,
+    KeyConditionExpression: "PK = :p AND begins_with(SK, :v)",
+    ExpressionAttributeValues: { ":p": `PRODUCT#${productId}`, ":v": "VARIANT#" }
+  });
+  const { Items = [] } = await ddb.send(q);
+  const items = Items.map(v => ({
+    variant_id: v.variantId, product_id: v.productId, sku: v.sku, color: v.color,
+    storage_gb: v.storage_gb, ram_gb: v.ram_gb, case_mm: v.case_mm, connectivity: v.connectivity,
+    price_HKD: v.price_HKD, cost_HKD: v.cost_HKD, barcode: v.barcode
+  }));
+  return respond(200, { items });
+}
+
+async function createVariant(event) {
+  const { variant_id, product_id, sku, color, storage_gb, ram_gb, case_mm, connectivity, price_HKD, cost_HKD, barcode } = parseBody(event.body);
+  if (!variant_id || !product_id || !sku || price_HKD == null)
+    return respond(400, { error: "variant_id, product_id, sku, price_HKD required" });
+
+  const item = {
+    PK: `PRODUCT#${product_id}`,
+    SK: `VARIANT#${variant_id}`,
+    variantId: variant_id,
+    productId: product_id,
+    sku,
+    color: color || null,
+    storage_gb: storage_gb != null ? parseInt(storage_gb) : null,
+    ram_gb: ram_gb != null ? parseInt(ram_gb) : null,
+    case_mm: case_mm != null ? parseInt(case_mm) : null,
+    connectivity: connectivity || null,
+    price_HKD: parseFloat(price_HKD),
+    cost_HKD: cost_HKD != null ? parseFloat(cost_HKD) : null,
+    barcode: barcode || null,
+    createdAt: new Date().toISOString()
+  };
+
+  const cmd = new TransactWriteCommand({
+    TransactItems: [{
+      Put: {
+        TableName: TABLE,
+        Item: item,
+        ConditionExpression: "attribute_not_exists(PK)"
+      }
+    }]
+  });
+
+  await ddb.send(cmd);
+  return respond(201, { ok: true, variant_id });
+}
+
+async function getInventory(event) {
+  const qs = event.queryStringParameters || {};
+  const variantId = qs.variant_id;
+  const locationId = qs.location_id;
+
+  if (!variantId && !locationId) return respond(400, { error: "variant_id or location_id required" });
+
+  if (variantId && locationId) {
+    const g = new GetCommand({ TableName: TABLE, Key: { PK: `INVENTORY#${variantId}`, SK: `LOCATION#${locationId}` }});
+    const { Item } = await ddb.send(g);
+    return respond(200, { item: Item || null });
+  }
+
+  if (variantId) {
+    const q = new QueryCommand({
+      TableName: TABLE,
+      KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
+      ExpressionAttributeValues: { ":pk": `INVENTORY#${variantId}`, ":sk": "LOCATION#" }
+    });
+    const { Items = [] } = await ddb.send(q);
+    return respond(200, { items: Items });
+  }
+
+  const q = new QueryCommand({
+    TableName: TABLE, IndexName: "GSI1",
+    KeyConditionExpression: "GSI1PK = :gpk AND begins_with(GSI1SK, :gsk)",
+    ExpressionAttributeValues: { ":gpk": `LOCATION#${locationId}`, ":gsk": "VARIANT#" }
+  });
+  const { Items = [] } = await ddb.send(q);
+  return respond(200, { items: Items });
+}
+
+async function reserveStock(event) {
+  const { variantId, locationId, qty } = parseBody(event.body);
+  if (!variantId || !locationId || !Number.isInteger(qty) || qty <= 0)
+    return respond(400, { error: "variantId, locationId, positive qty required" });
+
+  const upd = new UpdateCommand({
+    TableName: TABLE,
+    Key: { PK: `INVENTORY#${variantId}`, SK: `LOCATION#${locationId}` },
+    UpdateExpression:
+      "SET reserved = if_not_exists(reserved, :z) + :q, " +
+      "available = onHand - (if_not_exists(reserved, :z) + :q), " +
+      "updatedAt = :now",
+    ConditionExpression: "attribute_exists(PK) AND (onHand - if_not_exists(reserved, :z)) >= :q",
+    ExpressionAttributeValues: { ":q": qty, ":z": 0, ":now": new Date().toISOString() },
+    ReturnValues: "ALL_NEW"
+  });
+  const { Attributes } = await ddb.send(upd);
+  return respond(200, { ok: true, inventory: Attributes });
+}
+
+async function createAndCommitOrder(event) {
+  const { orderId, locationId, lines } = parseBody(event.body);
+  if (!orderId || !locationId || !Array.isArray(lines) || !lines.length)
+    return respond(400, { error: "orderId, locationId, lines[] required" });
+
+  const tx = [];
+  tx.push({
+    Put: {
+      TableName: TABLE,
+      Item: { PK: `ORDER#${orderId}`, SK: `ORDER#${orderId}`, status: "PAID", locationId, createdAt: new Date().toISOString() },
+      ConditionExpression: "attribute_not_exists(PK)"
+    }
+  });
+
+  lines.forEach((l, i) => {
+    if (!l.variantId || !Number.isInteger(l.qty) || l.qty <= 0) throw new Error("bad_line");
+    tx.push({
+      Put: {
+        TableName: TABLE,
+        Item: { PK: `ORDER#${orderId}`, SK: `LINE#${String(i).padStart(3,"0")}#${l.variantId}`, variantId: l.variantId, qty: l.qty, price: l.price ?? 0 }
+      }
+    });
+    tx.push({
+      Update: {
+        TableName: TABLE,
+        Key: { PK: `INVENTORY#${l.variantId}`, SK: `LOCATION#${locationId}` },
+        UpdateExpression: "SET onHand = onHand - :q, reserved = reserved - :q, available = (onHand - :q) - (reserved - :q), updatedAt = :now",
+        ConditionExpression: "onHand >= :q AND reserved >= :q",
+        ExpressionAttributeValues: { ":q": l.qty, ":now": new Date().toISOString() }
+      }
+    });
+  });
+
+  await ddb.send(new TransactWriteCommand({ TransactItems: tx }));
+  return respond(200, { ok: true, orderId });
+}
+
+/* ---------- helpers ---------- */
+function parseBody(b){ try{ return JSON.parse(b||"{}"); }catch{ return {}; } }
+function tryJson(v){ try{ return typeof v==="string"? JSON.parse(v):v; }catch{ return v; } }

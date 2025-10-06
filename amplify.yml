@@ -11,12 +11,12 @@ frontend:
     preBuild:
       commands:
         - echo "[PreBuild] Installing dependencies"
-  - cd frontend
+        - cd frontend
         - npm ci || npm install
     build:
       commands:
         - echo "[Build] Running Vite build"
-  - npm run build
+        - npm run build
         - echo "[Build] Build complete"
   artifacts:
     baseDirectory: frontend/dist

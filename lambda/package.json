@@ -1,0 +1,11 @@
+{
+  "name": "dist-inventory-dataset-lambda",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Lambda Function URL handler to serve product / variant / inventory data from S3 dataset files.",
+  "main": "index.mjs",
+  "license": "MIT",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.637.0"
+  }
+}

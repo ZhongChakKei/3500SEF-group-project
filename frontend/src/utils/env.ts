@@ -1,10 +1,27 @@
+const runtimeOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+
+function resolveEnv(key: string, fallback?: string) {
+  const value = import.meta.env[key as keyof ImportMetaEnv] as string | undefined;
+  if (value) {
+    return value;
+  }
+
+  if (fallback) {
+    console.warn(`[env] Missing ${key}, falling back to runtime value: ${fallback}`);
+    return fallback;
+  }
+
+  console.error(`[env] Missing required environment variable: ${key}`);
+  return '';
+}
+
 export const env = {
-  apiBaseUrl: import.meta.env.VITE_API_BASE_URL as string,
-  cognitoRegion: import.meta.env.VITE_COGNITO_REGION as string,
-  cognitoUserPoolId: import.meta.env.VITE_COGNITO_USER_POOL_ID as string,
-  cognitoClientId: import.meta.env.VITE_COGNITO_CLIENT_ID as string,
-  cognitoDomain: import.meta.env.VITE_COGNITO_DOMAIN as string,
-  oauthScopes: (import.meta.env.VITE_OAUTH_SCOPES as string)?.split(/\s+/) ?? [],
-  redirectUri: import.meta.env.VITE_REDIRECT_URI as string,
-  logoutUri: import.meta.env.VITE_LOGOUT_URI as string,
+  apiBaseUrl: resolveEnv('VITE_API_BASE_URL'),
+  cognitoRegion: resolveEnv('VITE_COGNITO_REGION'),
+  cognitoUserPoolId: resolveEnv('VITE_COGNITO_USER_POOL_ID'),
+  cognitoClientId: resolveEnv('VITE_COGNITO_CLIENT_ID'),
+  cognitoDomain: resolveEnv('VITE_COGNITO_DOMAIN'),
+  oauthScopes: (resolveEnv('VITE_OAUTH_SCOPES') || '').split(/\s+/).filter(Boolean),
+  redirectUri: resolveEnv('VITE_REDIRECT_URI', runtimeOrigin ? `${runtimeOrigin}/callback` : undefined),
+  logoutUri: resolveEnv('VITE_LOGOUT_URI', runtimeOrigin ? `${runtimeOrigin}/logout` : undefined),
 };

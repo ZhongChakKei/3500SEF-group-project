@@ -1,0 +1,8 @@
+attributes,brand,category,default_image,product_id,title
+"{'line': 'iPhone', 'model_year': 2023}",Apple,Smartphone,products/iphone15.jpg,P-IPH15,iPhone 15
+"{'line': 'iPhone', 'model_year': 2023}",Apple,Smartphone,products/iphone15pro.jpg,P-IPH15PRO,iPhone 15 Pro
+"{'line': 'iPad Air', 'chip': 'M2', 'model_year': 2024}",Apple,Tablet,products/ipadair11m2.jpg,P-IPAD-AIRM2-11,"iPad Air (M2) 11"""
+"{'line': 'MacBook Air', 'chip': 'M3', 'model_year': 2024}",Apple,Laptop,products/macbookair13m3.jpg,P-MBA13-M3,"MacBook Air 13"" (M3)"
+"{'line': 'MacBook Pro', 'chip': 'M3 Pro', 'model_year': 2023}",Apple,Laptop,products/mbp14m3pro.jpg,P-MBP14-M3PRO,"MacBook Pro 14"" (M3 Pro)"
+"{'line': 'Apple Watch', 'case_sizes': [41, 45], 'model_year': 2023}",Apple,Smartwatch,products/applewatchs9.jpg,P-AW-S9,Apple Watch Series 9
+"{'line': 'AirPods', 'model_year': 2022}",Apple,Headphones,products/airpodspro2.jpg,P-AIRP2,AirPods Pro (2nd generation)

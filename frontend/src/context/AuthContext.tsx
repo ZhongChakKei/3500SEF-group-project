@@ -16,7 +16,7 @@ interface AuthContextType {
   user: DecodedIdToken | null;
   login: () => void;
   logout: () => void;
-  handleRedirectCallback: () => Promise<void>;
+  handleRedirectCallback: () => Promise<boolean>;
   getAccessToken: () => Promise<string | null>;
   loading: boolean;
 }
@@ -120,13 +120,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const handleRedirectCallback = useCallback(async () => {
     const url = new URL(window.location.href);
     const code = url.searchParams.get('code');
-    if (!code) return;
+    if (!code) return false;
     
     const verifier = sessionStorage.getItem('pkce_verifier');
     if (!verifier) {
       console.error('Missing PKCE verifier - redirecting to login');
       window.location.href = '/';
-      return;
+      return false;
     }
     
     setLoading(true);
@@ -138,13 +138,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Small delay to ensure localStorage write is complete
       // This prevents race condition where redirect happens before storage is persisted
       await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Redirect to dashboard after tokens are securely stored
-      window.location.replace('/dashboard');
+
+      return true;
     } catch (error) {
       console.error('Token exchange failed:', error);
       sessionStorage.removeItem('pkce_verifier');
-      window.location.href = '/';
+      return false;
     } finally {
       setLoading(false);
     }

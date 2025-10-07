@@ -16,7 +16,7 @@ const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const TABLE = process.env.TABLE_NAME;
 const ORIGIN = process.env.ALLOWED_ORIGIN || "*";
 const REQUIRE_AUTH = String(process.env.REQUIRE_AUTH || "false").toLowerCase() === "true";
-const ISSUER = process.env.OAUTH_ISSUER || ""; // e.g. https://cognito-idp.us-east-2.amazonaws.com/us-east-2_AbC123456
+const ISSUER = process.env.OAUTH_ISSUER || "https://cognito-idp.us-east-2.amazonaws.com/us-east-2_yBy9tOShl"; // e.g. https://cognito-idp.us-east-2.amazonaws.com/us-east-2_AbC123456
 const REQUIRED_SCOPES = (process.env.REQUIRED_SCOPES || "")
   .split(",").map(s => s.trim()).filter(Boolean);
 
@@ -61,9 +61,7 @@ export const handler = async (event) => {
     await requireJwt(event); // no-op until REQUIRE_AUTH=true
 
     if (method === "GET" && path === "/products") return listProducts();
-    if (method === "POST" && path === "/products") return createProduct(event);
     if (method === "GET" && path === "/variants") return listVariants(event);
-    if (method === "POST" && path === "/variants") return createVariant(event);
     if (method === "GET" && path === "/inventory") return getInventory(event);
     if (method === "POST" && path === "/reserve") return reserveStock(event);
     if (method === "POST" && path === "/orders") return createAndCommitOrder(event);
@@ -95,37 +93,6 @@ async function listProducts() {
   return respond(200, { items });
 }
 
-async function createProduct(event) {
-  const { product_id, title, brand, category, default_image, attributes } = parseBody(event.body);
-  if (!product_id || !title || !brand || !category)
-    return respond(400, { error: "product_id, title, brand, category required" });
-
-  const item = {
-    PK: "TYPE#PRODUCT",
-    SK: `PRODUCT#${product_id}`,
-    productId: product_id,
-    title,
-    brand,
-    category,
-    default_image: default_image || null,
-    attributes: attributes ? JSON.stringify(attributes) : null,
-    createdAt: new Date().toISOString()
-  };
-
-  const cmd = new TransactWriteCommand({
-    TransactItems: [{
-      Put: {
-        TableName: TABLE,
-        Item: item,
-        ConditionExpression: "attribute_not_exists(PK)"
-      }
-    }]
-  });
-
-  await ddb.send(cmd);
-  return respond(201, { ok: true, product_id });
-}
-
 async function listVariants(event) {
   const productId = event.queryStringParameters?.product_id;
   if (!productId) return respond(400, { error: "product_id required" });
@@ -141,42 +108,6 @@ async function listVariants(event) {
     price_HKD: v.price_HKD, cost_HKD: v.cost_HKD, barcode: v.barcode
   }));
   return respond(200, { items });
-}
-
-async function createVariant(event) {
-  const { variant_id, product_id, sku, color, storage_gb, ram_gb, case_mm, connectivity, price_HKD, cost_HKD, barcode } = parseBody(event.body);
-  if (!variant_id || !product_id || !sku || price_HKD == null)
-    return respond(400, { error: "variant_id, product_id, sku, price_HKD required" });
-
-  const item = {
-    PK: `PRODUCT#${product_id}`,
-    SK: `VARIANT#${variant_id}`,
-    variantId: variant_id,
-    productId: product_id,
-    sku,
-    color: color || null,
-    storage_gb: storage_gb != null ? parseInt(storage_gb) : null,
-    ram_gb: ram_gb != null ? parseInt(ram_gb) : null,
-    case_mm: case_mm != null ? parseInt(case_mm) : null,
-    connectivity: connectivity || null,
-    price_HKD: parseFloat(price_HKD),
-    cost_HKD: cost_HKD != null ? parseFloat(cost_HKD) : null,
-    barcode: barcode || null,
-    createdAt: new Date().toISOString()
-  };
-
-  const cmd = new TransactWriteCommand({
-    TransactItems: [{
-      Put: {
-        TableName: TABLE,
-        Item: item,
-        ConditionExpression: "attribute_not_exists(PK)"
-      }
-    }]
-  });
-
-  await ddb.send(cmd);
-  return respond(201, { ok: true, variant_id });
 }
 
 async function getInventory(event) {

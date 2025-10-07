@@ -1,3 +1,28 @@
+# 🚀 Quick Start (Local Demo – No AWS Required)
+
+You can explore a simplified offline version in `LocalDemo/` with mock auth and sample data.
+
+### Run Local Demo
+```powershell
+cd LocalDemo
+npm install
+npm run dev
+```
+Open the shown URL (typically http://localhost:5173).
+
+Features in demo:
+- Product list & detail (sample JSON)
+- Mock login/logout (no Cognito)
+
+Not included:
+- Real Cognito OAuth
+- Inventory reservations / orders
+- Tailwind styling (kept minimal)
+
+To extend: copy additional JSON from `dataset/` to `LocalDemo/src/data/` and add new Zustand stores & routes.
+
+---
+
 # Distributed Inventory & Sales Management System
 
 A full-stack serverless inventory management application built with React, AWS Lambda, DynamoDB, and Cognito authentication. Features real-time stock tracking, product/variant management, and multi-location inventory with reservation capabilities.
@@ -50,13 +75,13 @@ npm install
 
 ### 3. Configure Environment Variables
 
-Create a `.env` file in the `frontend/` directory:
+Create a `.env` file in the `frontend/` directory (placeholders added):
 
 ```env
 # AWS Cognito Configuration
 VITE_COGNITO_REGION=us-east-2
-VITE_COGNITO_USER_POOL_ID=us-east-2_yBy9tOShl
-VITE_COGNITO_CLIENT_ID=<your-client-id>
+VITE_COGNITO_USER_POOL_ID=<your-user-pool-id>
+VITE_COGNITO_CLIENT_ID=<your-app-client-id>
 VITE_COGNITO_DOMAIN=<your-domain>.auth.us-east-2.amazoncognito.com
 
 # OAuth Configuration
@@ -68,7 +93,7 @@ VITE_REDIRECT_URI=http://localhost:5173/callback
 VITE_LOGOUT_URI=http://localhost:5173/
 ```
 
-> **Note**: For local development, you can use your AWS Lambda Function URL as `VITE_API_BASE_URL` if you don't have a local backend running.
+> **Note**: For local development, you can use your AWS Lambda Function URL as `VITE_API_BASE_URL` if you don't have a local backend running. (Real function URL redacted.)
 
 ### 4. Run Development Server
 ```bash
@@ -123,7 +148,7 @@ aws lambda create-function-url-config \
   --cors AllowOrigins="*",AllowMethods="GET,POST,PUT,DELETE",AllowHeaders="*"
 ```
 
-Save the Function URL (e.g., `https://m6gr3ldesm7avy2g5gedpk53ma0vdoel.lambda-url.us-east-2.on.aws/`)
+Save the Function URL (e.g., `https://<your-function-id>.lambda-url.us-east-2.on.aws/`)
 
 #### D. Update Lambda Code (For Updates)
 ```powershell
@@ -165,7 +190,7 @@ aws lambda update-function-code --function-name dist-inventory-api --zip-file fi
 6. **Create Test User**:
    ```bash
    aws cognito-idp admin-create-user \
-     --user-pool-id us-east-2_yBy9tOShl \
+     --user-pool-id <your-user-pool-id> \
      --username testuser@example.com \
      --temporary-password TempPass123! \
      --user-attributes Name=email,Value=testuser@example.com Name=email_verified,Value=true
@@ -209,11 +234,11 @@ Go to **App settings → Environment variables** and add:
 
 | Variable | Value (Example) |
 |----------|-----------------|
-| `VITE_API_BASE_URL` | `https://m6gr3ldesm7avy2g5gedpk53ma0vdoel.lambda-url.us-east-2.on.aws` |
+| `VITE_API_BASE_URL` | `https://<your-function-id>.lambda-url.us-east-2.on.aws` |
 | `VITE_COGNITO_REGION` | `us-east-2` |
-| `VITE_COGNITO_USER_POOL_ID` | `us-east-2_yBy9tOShl` |
+| `VITE_COGNITO_USER_POOL_ID` | `<your-user-pool-id>` |
 | `VITE_COGNITO_CLIENT_ID` | `<your-app-client-id>` |
-| `VITE_COGNITO_DOMAIN` | `dist-inv-demo.auth.us-east-2.amazoncognito.com` |
+| `VITE_COGNITO_DOMAIN` | `<your-domain>.auth.us-east-2.amazoncognito.com` |
 | `VITE_OAUTH_SCOPES` | `openid profile email` |
 | `VITE_REDIRECT_URI` | `https://<your-app>.amplifyapp.com/callback` |
 | `VITE_LOGOUT_URI` | `https://<your-app>.amplifyapp.com/` |
@@ -288,7 +313,7 @@ node scripts/loadData.mjs
 |----------|----------|-------------|
 | `VITE_API_BASE_URL` | Yes | Lambda Function URL (e.g., `https://xxx.lambda-url.us-east-2.on.aws`) |
 | `VITE_COGNITO_REGION` | Yes | AWS region for Cognito (e.g., `us-east-2`) |
-| `VITE_COGNITO_USER_POOL_ID` | Yes | Cognito User Pool ID (e.g., `us-east-2_xxxxxx`) |
+| `VITE_COGNITO_USER_POOL_ID` | Yes | Cognito User Pool ID (e.g., `<your-user-pool-id>`) |
 | `VITE_COGNITO_CLIENT_ID` | Yes | App client ID (no secret) |
 | `VITE_COGNITO_DOMAIN` | Yes | Cognito domain (e.g., `your-app.auth.region.amazoncognito.com`) |
 | `VITE_OAUTH_SCOPES` | Yes | Space-separated scopes (e.g., `openid profile email`) |
@@ -509,7 +534,7 @@ PK: TYPE#LOCATION        SK: LOCATION#{location_id}   → Location metadata
 - [ ] Cognito User Pool created
 - [ ] App client configured (no secret, PKCE enabled)
 - [ ] Cognito callback URLs added (local + production)
-- [ ] Cognito domain configured
+- [ ] Cognito domain configured (choose your own prefix; redacted in README)
 - [ ] Test user created in Cognito
 - [ ] GitHub repository created and pushed
 - [ ] Amplify app connected to repository
@@ -537,6 +562,9 @@ PK: TYPE#LOCATION        SK: LOCATION#{location_id}   → Location metadata
 ## 📄 License
 
 This project is for educational purposes. Refer to your institution's guidelines for usage and distribution.
+
+---
+_Sensitive identifiers (Function URL, User Pool ID, domain prefix) replaced with placeholders._
 - Implement order creation UI
 - Add SKU copy button & image loading from S3
 - Replace sequential variant inventory fetch with batched call

@@ -2,4 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
-body { @apply antialiased; }
+body { @apply antialiased bg-[color:#07111b] text-surface-200; }
+
+/* Scrollbar theming (WebKit) */
+::-webkit-scrollbar { width: 10px; }
+::-webkit-scrollbar-track { background: #0b1522; }
+::-webkit-scrollbar-thumb { background: #1d3f5e; border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: #27587f; }

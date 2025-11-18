@@ -1,0 +1,20 @@
+[
+  {
+    "storeId": "store-001",
+    "salesDate": "2025-10-30",
+    "items": [
+      {
+        "itemId": "0001",
+        "salesQty": 35
+      },
+      {
+        "itemId": "0002",
+        "salesQty": 18
+      },
+      {
+        "itemId": "0003",
+        "salesQty": 22
+      }
+    ]
+  }
+]

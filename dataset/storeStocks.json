@@ -1,0 +1,26 @@
+[
+  {
+    "storeId": "store-001",
+    "itemId": "0001",
+    "in-stock": 120,
+    "ideal-stock": 150,
+    "reservedQty": 5,
+    "availableQty": 115
+  },
+  {
+    "storeId": "store-001",
+    "itemId": "0002",
+    "in-stock": 60,
+    "ideal-stock": 80,
+    "reservedQty": 2,
+    "availableQty": 58
+  },
+  {
+    "storeId": "store-001",
+    "itemId": "0003",
+    "in-stock": 40,
+    "ideal-stock": 60,
+    "reservedQty": 0,
+    "availableQty": 40
+  }
+]

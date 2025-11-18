@@ -1,0 +1,12 @@
+[
+  {
+    "storeId": "store-001",
+    "storeCode": "HKS1",
+    "location": {
+      "addressLine1": "Shop 101, Central Plaza",
+      "district": "Central",
+      "city": "Hong Kong"
+    },
+    "status": "OPEN"
+  }
+]

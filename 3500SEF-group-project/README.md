@@ -1,7 +1,7 @@
 # 🚀 Quick Start (Local Demo – No AWS Required)
 
 You can explore a simplified offline version in `LocalDemo/` with mock auth and sample data.
-test
+
 ### Run Local Demo
 ```powershell
 cd LocalDemo

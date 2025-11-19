@@ -1,34 +1,66 @@
 import React, { useEffect, useState } from 'react';
-import { getInventoryByLocation } from '../services/inventoryService';
+import { inventoryApi, itemsApi, storesApi, Inventory, Item, Store } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { InventoryItem } from '../types';
 
-const tabs = ['STO-CWB', 'STO-TST', 'WH-HK'];
+interface InventoryWithDetails extends Inventory {
+  itemName?: string;
+  storeName?: string;
+}
 
 const InventoryPage: React.FC = () => {
   const { getAccessToken } = useAuth();
-  const [activeTab, setActiveTab] = useState('STO-CWB');
-  const [items, setItems] = useState<InventoryItem[]>([]);
+  const [stores, setStores] = useState<Store[]>([]);
+  const [activeStoreId, setActiveStoreId] = useState<string>('');
+  const [items, setItems] = useState<InventoryWithDetails[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    // Load stores on mount
+    (async () => {
+      try {
+        const storeList = await storesApi.getAll();
+        setStores(storeList);
+        if (storeList.length > 0) {
+          setActiveStoreId(storeList[0].storeId);
+        }
+      } catch (e) {
+        console.error('Failed to load stores:', e);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!activeStoreId) return;
     (async () => {
       setLoading(true);
       try {
-        const token = await getAccessToken();
-        if (!token) return;
-        const data = await getInventoryByLocation(token, activeTab);
-        setItems(data);
+        const inventory = await inventoryApi.getAll({ storeId: activeStoreId });
+        const itemsData = await itemsApi.getAll();
+        const itemsMap = new Map(itemsData.map(i => [i.itemId, i.itemName]));
+        
+        const enriched = inventory.map(inv => ({
+          ...inv,
+          itemName: itemsMap.get(inv.itemId) || inv.itemId
+        }));
+        setItems(enriched);
+      } catch (e) {
+        console.error('Failed to load inventory:', e);
       } finally { setLoading(false); }
     })();
-  }, [activeTab, getAccessToken]);
+  }, [activeStoreId]);
 
   return (
     <div className="space-y-7">
       <h2 className="text-xl font-semibold text-white tracking-wide">Inventory</h2>
       <div className="flex gap-2 border-b border-white/20">
-        {tabs.map(t => (
-          <button key={t} onClick={() => setActiveTab(t)} className={t === activeTab ? 'px-4 py-2 text-sm border-b-2 border-[#0066CC] font-medium text-white' : 'px-4 py-2 text-sm text-gray-400 hover:text-white'}>{t}</button>
+        {stores.map(store => (
+          <button 
+            key={store.storeId} 
+            onClick={() => setActiveStoreId(store.storeId)} 
+            className={store.storeId === activeStoreId ? 'px-4 py-2 text-sm border-b-2 border-[#0066CC] font-medium text-white' : 'px-4 py-2 text-sm text-gray-400 hover:text-white'}
+          >
+            {store.storeCode}
+          </button>
         ))}
       </div>
       {loading && <div className="space-y-2">
@@ -38,8 +70,9 @@ const InventoryPage: React.FC = () => {
         <table className="min-w-full text-sm">
           <thead className="bg-[rgba(20,40,70,0.5)] text-gray-400 text-xs uppercase border-b border-white/10">
             <tr>
-              <th className="text-left px-4 py-3 font-medium">Variant</th>
-              <th className="text-left px-4 py-3 font-medium">On Hand</th>
+              <th className="text-left px-4 py-3 font-medium">Item</th>
+              <th className="text-left px-4 py-3 font-medium">In Stock</th>
+              <th className="text-left px-4 py-3 font-medium">Ideal Stock</th>
               <th className="text-left px-4 py-3 font-medium">Reserved</th>
               <th className="text-left px-4 py-3 font-medium">Available</th>
               <th className="text-left px-4 py-3 font-medium">Updated</th>
@@ -47,12 +80,13 @@ const InventoryPage: React.FC = () => {
           </thead>
           <tbody>
             {items.map(i => (
-              <tr key={`${i.variantId}-${i.locationId}`} className="border-t border-white/10 hover:bg-white/5">
-                <td className="px-4 py-3 font-mono text-xs text-white">{i.variantId}</td>
-                <td className="px-4 py-3 text-gray-300">{i.onHand}</td>
-                <td className="px-4 py-3 text-gray-300">{i.reserved}</td>
-                <td className="px-4 py-3 text-gray-300">{i.available}</td>
-                <td className="px-4 py-3 text-xs text-gray-400">{new Date(i.updatedAt).toLocaleString()}</td>
+              <tr key={`${i.storeId}-${i.itemId}`} className="border-t border-white/10 hover:bg-white/5">
+                <td className="px-4 py-3 text-white">{i.itemName}</td>
+                <td className="px-4 py-3 text-gray-300">{i['in-stock']}</td>
+                <td className="px-4 py-3 text-gray-300">{i['ideal-stock']}</td>
+                <td className="px-4 py-3 text-gray-300">{i.reservedQty}</td>
+                <td className="px-4 py-3 text-gray-300">{i.availableQty}</td>
+                <td className="px-4 py-3 text-xs text-gray-400">{i.updatedAt ? new Date(i.updatedAt).toLocaleString() : '-'}</td>
               </tr>
             ))}
           </tbody>

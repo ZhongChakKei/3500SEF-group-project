@@ -49,7 +49,7 @@ const ProductDetailPage: React.FC = () => {
         const updatedInv = await getInventoryByVariant(token, variantId);
         setVariants(vs => vs.map(v => v.variant_id === variantId ? { ...v, inventory: updatedInv } : v));
       } else {
-        setMessage(res.error || 'Reservation failed');
+        setMessage(res.message || 'Reservation failed');
       }
     } catch (e: any) {
       setMessage(e.message || 'Error reserving');

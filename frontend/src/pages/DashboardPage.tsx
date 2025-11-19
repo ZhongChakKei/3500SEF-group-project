@@ -1,26 +1,41 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import SummaryCard from '../components/SummaryCard';
+import SalesChart from '../components/SalesChart';
+import RecentSalesTable from '../components/RecentSalesTable';
+import storeStocks from '../../../dataset/storeStocks.json';
+import salesData from '../../../dataset/storeSales.json';
 
 const DashboardPage: React.FC = () => {
+  const stats = useMemo(() => {
+    const totalSales = (salesData as any[]).reduce((acc, entry) => acc + ((entry.items || []).reduce((s: number, it: any) => s + (it.salesQty || 0), 0)), 0);
+    const uniqueItems = new Set<string>();
+    (storeStocks as any[]).forEach(s => uniqueItems.add(s.itemId));
+    const lowStockCount = (storeStocks as any[]).filter(s => (s['availableQty'] ?? s['in-stock'] ?? 0) < (s['ideal-stock'] ?? Infinity)).length;
+    return { totalSales, itemCount: uniqueItems.size, lowStockCount };
+  }, []);
+
   return (
     <div className="space-y-7">
-      <h2 className="text-xl font-semibold text-white tracking-wide">Dashboard</h2>
-      <div className="grid md:grid-cols-3 gap-6">
-        <div className="p-5 rounded-xl bg-[rgba(30,50,80,0.6)] backdrop-blur border border-white/20 shadow shadow-black/40">
-          <h3 className="font-medium mb-3 text-white">Low Stock (Top 5)</h3>
-          <ul className="text-xs text-gray-300 space-y-2">
-            {['w-3/4','w-1/2','w-2/3','w-1/3','w-1/4'].map(w => <li key={w} className={`animate-pulse h-3 rounded bg-white/20 ${w}`} />)}
-          </ul>
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-semibold text-white tracking-wide">Dashboard</h2>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <SummaryCard title="Total Sales" value={stats.totalSales} subtitle="Total quantity sold (demo data)" />
+        <SummaryCard title="Tracked Items" value={stats.itemCount} subtitle="Unique items in stock" />
+        <SummaryCard title="Low Stock Items" value={stats.lowStockCount} subtitle="Items below ideal stock" />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <SalesChart />
         </div>
-        <div className="p-5 rounded-xl bg-[rgba(30,50,80,0.6)] backdrop-blur border border-white/20 shadow shadow-black/40">
-          <h3 className="font-medium mb-2 text-white">Open Orders (Mock)</h3>
-          <p className="text-[11px] text-gray-300">Implement once API available</p>
-        </div>
-        <div className="p-5 rounded-xl bg-[rgba(30,50,80,0.6)] backdrop-blur border border-white/20 shadow shadow-black/40">
-          <h3 className="font-medium mb-2 text-white">Transfers (Mock)</h3>
-          <p className="text-[11px] text-gray-300">Implement future feature</p>
+        <div>
+          <RecentSalesTable />
         </div>
       </div>
     </div>
   );
 };
+
 export default DashboardPage;

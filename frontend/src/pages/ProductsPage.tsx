@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { itemsApi, Item } from '../services/api';
+import { Product } from '../types';
+import { listProducts } from '../services/inventoryService';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 
 const ProductsPage: React.FC = () => {
   const { getAccessToken } = useAuth();
-  const [items, setItems] = useState<Item[]>([]);
+  const [items, setItems] = useState<Product[]>([]);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -13,15 +14,15 @@ const ProductsPage: React.FC = () => {
     (async () => {
       setLoading(true);
       try {
-        const data = await itemsApi.getAll();
+        const token = await getAccessToken();
+        if (!token) return;
+        const data = await listProducts(token);
         setItems(data);
-      } catch (e) {
-        console.error('Failed to load items:', e);
       } finally { setLoading(false); }
     })();
-  }, []);
+  }, [getAccessToken]);
 
-  const filtered = items.filter(p => !query || p.itemName.toLowerCase().includes(query.toLowerCase()) || p.itemId.includes(query));
+  const filtered = items.filter(p => !query || p.title.toLowerCase().includes(query.toLowerCase()) || p.product_id.includes(query));
 
   return (
     <div className="space-y-7">
@@ -39,12 +40,11 @@ const ProductsPage: React.FC = () => {
       </div>}
       {!loading && <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
         {filtered.map(p => (
-          <Link key={p.itemId} to={`/products/${p.itemId}`} className="bg-[rgba(30,50,80,0.6)] backdrop-blur border border-white/20 rounded-lg p-3 shadow shadow-black/40 hover:border-[#0066CC]/60 hover:shadow-[#0066CC]/20 flex flex-col transition-colors">
+          <Link key={p.product_id} to={`/products/${p.product_id}`} className="bg-[rgba(30,50,80,0.6)] backdrop-blur border border-white/20 rounded-lg p-3 shadow shadow-black/40 hover:border-[#0066CC]/60 hover:shadow-[#0066CC]/20 flex flex-col transition-colors">
             <div className="aspect-square bg-white/10 rounded mb-2 flex items-center justify-center text-xs text-gray-400">IMG</div>
-            <div className="text-[10px] text-gray-400 mb-1 font-mono tracking-wide">{p.itemId}</div>
-            <div className="font-medium text-sm text-white line-clamp-2 leading-snug">{p.itemName}</div>
-            <div className="mt-auto text-[10px] text-gray-400 uppercase tracking-wider">{p.itemType}</div>
-            <div className="text-xs text-gray-300 mt-1">${p.unitPrice}</div>
+            <div className="text-[10px] text-gray-400 mb-1 font-mono tracking-wide">{p.product_id}</div>
+            <div className="font-medium text-sm text-white line-clamp-2 leading-snug">{p.title}</div>
+            <div className="mt-auto text-[10px] text-gray-400 uppercase tracking-wider">{p.brand}</div>
           </Link>
         ))}
       </div>}

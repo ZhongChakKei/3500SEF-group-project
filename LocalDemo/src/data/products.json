@@ -1,7 +1,0 @@
-{
-  "items":  [
-    {"product_id":"P-IPH15","title":"iPhone 15","brand":"Apple","category":"Smartphone","default_image":"products/iphone15.jpg"},
-    {"product_id":"P-IPH15PRO","title":"iPhone 15 Pro","brand":"Apple","category":"Smartphone","default_image":"products/iphone15pro.jpg"},
-    {"product_id":"P-IPAD-AIRM2-11","title":"iPad Air (M2) 11\"","brand":"Apple","category":"Tablet","default_image":"products/ipadair11m2.jpg"}
-  ]
-}

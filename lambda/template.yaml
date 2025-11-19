@@ -1,0 +1,80 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Retail Inventory API - MongoDB Backend
+
+Parameters:
+  MongoDBURI:
+    Type: String
+    Description: MongoDB Atlas connection string
+    NoEcho: true
+  
+  MongoDBDatabase:
+    Type: String
+    Default: retail-db
+    Description: MongoDB database name
+  
+  AllowedOrigin:
+    Type: String
+    Default: '*'
+    Description: CORS allowed origin (use your Amplify app URL in production)
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 512
+    Runtime: nodejs18.x
+    Environment:
+      Variables:
+        MONGODB_URI: !Ref MongoDBURI
+        MONGODB_DB: !Ref MongoDBDatabase
+        ALLOWED_ORIGIN: !Ref AllowedOrigin
+
+Resources:
+  RetailApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: retail-inventory-api
+      CodeUri: ./
+      Handler: index.handler
+      Description: Retail inventory API with MongoDB CRUD operations
+      Architectures:
+        - x86_64
+      FunctionUrlConfig:
+        AuthType: NONE
+        Cors:
+          AllowOrigins:
+            - !Ref AllowedOrigin
+          AllowMethods:
+            - GET
+            - POST
+            - PUT
+            - DELETE
+            - OPTIONS
+          AllowHeaders:
+            - Content-Type
+            - Authorization
+          MaxAge: 300
+      Events:
+        ApiProxy:
+          Type: HttpApi
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+        ApiRoot:
+          Type: HttpApi
+          Properties:
+            Path: /
+            Method: ANY
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub 'https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com'
+  
+  FunctionUrl:
+    Description: Lambda Function URL
+    Value: !GetAtt RetailApiFunctionUrl.FunctionUrl
+  
+  FunctionArn:
+    Description: Lambda Function ARN
+    Value: !GetAtt RetailApiFunction.Arn

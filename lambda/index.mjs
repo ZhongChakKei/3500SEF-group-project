@@ -88,6 +88,10 @@ export const handler = async (event) => {
         return await handleInventory(db, method, params, event);
       case 'sales':
         return await handleSales(db, method, params, event);
+      case 'products':
+        return await handleProducts(db, method, params, event);
+      case 'variants':
+        return await handleVariants(db, method, params, event);
       default:
         return respond(404, { success: false, error: 'Resource not found' });
     }
@@ -244,6 +248,56 @@ async function handleStores(db, method, params, event) {
 async function handleInventory(db, method, params, event) {
   const collection = db.collection('inventory');
   
+  // Enhanced inventory endpoints for products/variants system
+  if (method === 'GET' && params.length === 2 && params[0] === 'location') {
+    // GET /api/inventory/location/:locationId - Get all inventory for a location
+    const locationId = params[1];
+    const inventory = await collection.find({ locationId }).toArray();
+    return respond(200, { success: true, data: inventory });
+  }
+  
+  if (method === 'GET' && params.length === 2 && params[0] === 'variant') {
+    // GET /api/inventory/variant/:variantId - Get inventory across all locations for a variant
+    const variantId = params[1];
+    const inventory = await collection.find({ variantId }).toArray();
+    return respond(200, { success: true, data: inventory });
+  }
+  
+  if (method === 'POST' && params.length === 1 && params[0] === 'reserve') {
+    // POST /api/inventory/reserve - Reserve stock
+    const body = JSON.parse(event.body || '{}');
+    const { variantId, locationId, qty } = body;
+    
+    if (!variantId || !locationId || !qty) {
+      return respond(400, { success: false, error: 'variantId, locationId, and qty are required' });
+    }
+    
+    const inventory = await collection.findOne({ variantId, locationId });
+    if (!inventory) {
+      return respond(404, { success: false, error: 'Inventory record not found' });
+    }
+    
+    if (inventory.available < qty) {
+      return respond(400, { success: false, error: 'Insufficient available quantity' });
+    }
+    
+    const newReserved = inventory.reserved + parseInt(qty);
+    const newAvailable = inventory.onHand - newReserved;
+    
+    await collection.updateOne(
+      { variantId, locationId },
+      {
+        $set: {
+          reserved: newReserved,
+          available: newAvailable,
+          updatedAt: new Date().toISOString()
+        }
+      }
+    );
+    
+    return respond(200, { success: true, message: `Reserved ${qty} units successfully` });
+  }
+  
   if (method === 'GET' && params.length === 0) {
     // GET /api/inventory?storeId=xxx&itemId=xxx
     const queryParams = event.queryStringParameters || {};
@@ -291,6 +345,34 @@ async function handleInventory(db, method, params, event) {
   }
   
   if (method === 'PUT' && params.length === 2) {
+    // Check if it's variant-based or store-based inventory
+    // Try variant/location first
+    const possibleVariant = await collection.findOne({ variantId: params[0], locationId: params[1] });
+    
+    if (possibleVariant) {
+      // PUT /api/inventory/:variantId/:locationId - Update variant inventory
+      const body = JSON.parse(event.body || '{}');
+      const { onHand, reserved } = body;
+      
+      const updateFields = {};
+      if (onHand !== undefined) updateFields.onHand = parseInt(onHand);
+      if (reserved !== undefined) updateFields.reserved = parseInt(reserved);
+      
+      const newOnHand = onHand !== undefined ? parseInt(onHand) : possibleVariant.onHand;
+      const newReserved = reserved !== undefined ? parseInt(reserved) : possibleVariant.reserved;
+      updateFields.available = newOnHand - newReserved;
+      updateFields.updatedAt = new Date().toISOString();
+      
+      const result = await collection.findOneAndUpdate(
+        { variantId: params[0], locationId: params[1] },
+        { $set: updateFields },
+        { returnDocument: 'after' }
+      );
+      
+      return respond(200, { success: true, data: result });
+    }
+    
+    // Fall back to store/item based inventory
     // PUT /api/inventory/:storeId/:itemId
     const body = JSON.parse(event.body || '{}');
     const { inStock, idealStock, reservedQty } = body;
@@ -402,6 +484,106 @@ async function handleSales(db, method, params, event) {
     const result = await collection.deleteOne({ storeId: params[0], salesDate: params[1] });
     if (result.deletedCount === 0) return respond(404, { success: false, error: 'Sales record not found' });
     return respond(200, { success: true, message: 'Sales record deleted successfully' });
+  }
+  
+  return respond(405, { success: false, error: 'Method not allowed' });
+}
+
+// ==================== PRODUCTS HANDLERS ====================
+
+async function handleProducts(db, method, params, event) {
+  const collection = db.collection('products');
+  
+  if (method === 'GET' && params.length === 0) {
+    // GET /api/products - List all products
+    const products = await collection.find({}).sort({ title: 1 }).toArray();
+    return respond(200, { success: true, data: products });
+  }
+  
+  if (method === 'GET' && params.length === 1) {
+    // GET /api/products/:productId - Get single product
+    const product = await collection.findOne({ product_id: params[0] });
+    if (!product) return respond(404, { success: false, error: 'Product not found' });
+    return respond(200, { success: true, data: product });
+  }
+  
+  if (method === 'GET' && params.length === 2 && params[1] === 'variants') {
+    // GET /api/products/:productId/variants - Get all variants for a product
+    const variantsCollection = db.collection('variants');
+    const variants = await variantsCollection.find({ product_id: params[0] }).toArray();
+    return respond(200, { success: true, data: variants });
+  }
+  
+  if (method === 'POST' && params.length === 0) {
+    // POST /api/products - Create new product
+    const body = JSON.parse(event.body || '{}');
+    const { product_id, title, brand, category, default_image, attributes } = body;
+    
+    if (!product_id || !title || !brand || !category) {
+      return respond(400, { success: false, error: 'product_id, title, brand, and category are required' });
+    }
+    
+    const existing = await collection.findOne({ product_id });
+    if (existing) return respond(409, { success: false, error: 'Product already exists' });
+    
+    const newProduct = {
+      product_id,
+      title,
+      brand,
+      category,
+      default_image: default_image || null,
+      attributes: attributes || {},
+      createdAt: new Date().toISOString()
+    };
+    
+    await collection.insertOne(newProduct);
+    return respond(201, { success: true, data: newProduct });
+  }
+  
+  return respond(405, { success: false, error: 'Method not allowed' });
+}
+
+// ==================== VARIANTS HANDLERS ====================
+
+async function handleVariants(db, method, params, event) {
+  const collection = db.collection('variants');
+  
+  if (method === 'GET' && params.length === 1) {
+    // GET /api/variants/:variantId - Get single variant
+    const variant = await collection.findOne({ variant_id: params[0] });
+    if (!variant) return respond(404, { success: false, error: 'Variant not found' });
+    return respond(200, { success: true, data: variant });
+  }
+  
+  if (method === 'POST' && params.length === 0) {
+    // POST /api/variants - Create new variant
+    const body = JSON.parse(event.body || '{}');
+    const { variant_id, product_id, sku, price_HKD, cost_HKD, color, storage_gb, ram_gb, case_mm, connectivity, barcode } = body;
+    
+    if (!variant_id || !product_id || !sku || price_HKD === undefined) {
+      return respond(400, { success: false, error: 'variant_id, product_id, sku, and price_HKD are required' });
+    }
+    
+    const existing = await collection.findOne({ variant_id });
+    if (existing) return respond(409, { success: false, error: 'Variant already exists' });
+    
+    const newVariant = {
+      variant_id,
+      product_id,
+      sku,
+      price_HKD: parseFloat(price_HKD),
+      cost_HKD: cost_HKD ? parseFloat(cost_HKD) : null,
+      color: color || null,
+      storage_gb: storage_gb ? parseInt(storage_gb) : null,
+      ram_gb: ram_gb ? parseInt(ram_gb) : null,
+      case_mm: case_mm ? parseInt(case_mm) : null,
+      connectivity: connectivity || null,
+      barcode: barcode || null,
+      createdAt: new Date().toISOString()
+    };
+    
+    await collection.insertOne(newVariant);
+    return respond(201, { success: true, data: newVariant });
   }
   
   return respond(405, { success: false, error: 'Method not allowed' });

@@ -1,12 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { Product } from '../types';
-import { listProducts } from '../services/inventoryService';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
+import { itemsApi } from '../services/api';
+
+interface Item {
+  itemId: string;
+  itemName: string;
+  itemType: string;
+  unitPrice: number;
+}
 
 const ProductsPage: React.FC = () => {
   const { getAccessToken } = useAuth();
-  const [items, setItems] = useState<Product[]>([]);
+  const [items, setItems] = useState<Item[]>([]);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -14,15 +20,15 @@ const ProductsPage: React.FC = () => {
     (async () => {
       setLoading(true);
       try {
-        const token = await getAccessToken();
-        if (!token) return;
-        const data = await listProducts(token);
+        const data = await itemsApi.getAll();
         setItems(data);
+      } catch (error) {
+        console.error('Failed to load items:', error);
       } finally { setLoading(false); }
     })();
-  }, [getAccessToken]);
+  }, []);
 
-  const filtered = items.filter(p => !query || p.title.toLowerCase().includes(query.toLowerCase()) || p.product_id.includes(query));
+  const filtered = items.filter(p => !query || p.itemName.toLowerCase().includes(query.toLowerCase()) || p.itemId.includes(query));
 
   return (
     <div className="space-y-7">
@@ -38,13 +44,21 @@ const ProductsPage: React.FC = () => {
       {loading && <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
         {Array.from({ length: 8 }).map((_, i) => <div key={i} className="h-40 bg-white/10 animate-pulse rounded" />)}
       </div>}
-      {!loading && <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+      {!loading && filtered.length === 0 && (
+        <div className="text-center py-12 bg-[rgba(30,50,80,0.4)] rounded-xl border border-white/10">
+          <div className="text-gray-400 text-sm">
+            {query ? 'No items match your search' : 'No items found. Start by adding products to your inventory.'}
+          </div>
+        </div>
+      )}
+      {!loading && filtered.length > 0 && <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
         {filtered.map(p => (
-          <Link key={p.product_id} to={`/products/${p.product_id}`} className="bg-[rgba(30,50,80,0.6)] backdrop-blur border border-white/20 rounded-lg p-3 shadow shadow-black/40 hover:border-[#0066CC]/60 hover:shadow-[#0066CC]/20 flex flex-col transition-colors">
-            <div className="aspect-square bg-white/10 rounded mb-2 flex items-center justify-center text-xs text-gray-400">IMG</div>
-            <div className="text-[10px] text-gray-400 mb-1 font-mono tracking-wide">{p.product_id}</div>
-            <div className="font-medium text-sm text-white line-clamp-2 leading-snug">{p.title}</div>
-            <div className="mt-auto text-[10px] text-gray-400 uppercase tracking-wider">{p.brand}</div>
+          <Link key={p.itemId} to={`/products/${p.itemId}`} className="bg-[rgba(30,50,80,0.6)] backdrop-blur border border-white/20 rounded-lg p-3 shadow shadow-black/40 hover:border-[#0066CC]/60 hover:shadow-[#0066CC]/20 flex flex-col transition-colors">
+            <div className="aspect-square bg-white/10 rounded mb-2 flex items-center justify-center text-xs text-gray-400">📦</div>
+            <div className="text-[10px] text-gray-400 mb-1 font-mono tracking-wide">{p.itemId}</div>
+            <div className="font-medium text-sm text-white line-clamp-2 leading-snug">{p.itemName}</div>
+            <div className="mt-auto text-[10px] text-gray-400 uppercase tracking-wider">{p.itemType}</div>
+            <div className="mt-1 text-sm font-semibold text-[#0066CC]">HKD ${p.unitPrice}</div>
           </Link>
         ))}
       </div>}

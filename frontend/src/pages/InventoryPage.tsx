@@ -1,40 +1,79 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { getInventoryByLocation } from '../services/inventoryService';
 import { useAuth } from '../context/AuthContext';
-import { InventoryItem } from '../types';
+import { storesApi } from '../services/api';
+import axios from 'axios';
+import { env } from '../utils/env';
 
-const tabs = ['STO-CWB', 'STO-TST', 'WH-HK'];
+interface Store {
+  storeId: string;
+  storeCode: string;
+  location: {
+    addressLine1: string;
+    district: string;
+    city: string;
+  };
+  status: string;
+}
+
+interface InventoryRecord {
+  storeId: string;
+  itemId: string;
+  'in-stock': number;
+  'ideal-stock': number;
+  reservedQty: number;
+  availableQty: number;
+  updatedAt?: string;
+}
 
 const InventoryPage: React.FC = () => {
   const { getAccessToken } = useAuth();
-  const [activeTab, setActiveTab] = useState('STO-CWB');
-  const [items, setItems] = useState<InventoryItem[]>([]);
+  const [stores, setStores] = useState<Store[]>([]);
+  const [activeStore, setActiveStore] = useState<string>('');
+  const [items, setItems] = useState<InventoryRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     (async () => {
+      try {
+        const storeData = await storesApi.getAll();
+        setStores(storeData);
+        if (storeData.length > 0) {
+          setActiveStore(storeData[0].storeId);
+        }
+      } catch (error) {
+        console.error('Failed to load stores:', error);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!activeStore) return;
+    (async () => {
       setLoading(true);
       try {
-        const token = await getAccessToken();
-        if (!token) return;
-        const data = await getInventoryByLocation(token, activeTab);
-        setItems(data);
+        const response = await axios.get(`${env.apiBaseUrl}/api/inventory`, {
+          params: { storeId: activeStore }
+        });
+        setItems(response.data.data || []);
+      } catch (error) {
+        console.error('Failed to load inventory:', error);
+        setItems([]);
       } finally { setLoading(false); }
     })();
-  }, [activeTab, getAccessToken]);
+  }, [activeStore]);
 
   const stats = useMemo(() => {
     const totalItems = items.length;
-    const totalOnHand = items.reduce((sum, item) => sum + (item.onHand || 0), 0);
-    const totalReserved = items.reduce((sum, item) => sum + (item.reserved || 0), 0);
-    const lowStock = items.filter(item => item.available < 10).length;
+    const totalOnHand = items.reduce((sum, item) => sum + (item['in-stock'] || 0), 0);
+    const totalReserved = items.reduce((sum, item) => sum + (item.reservedQty || 0), 0);
+    const lowStock = items.filter(item => item.availableQty < (item['ideal-stock'] * 0.5)).length;
     return { totalItems, totalOnHand, totalReserved, lowStock };
   }, [items]);
 
   const filtered = items.filter(item => 
     !searchQuery || 
-    item.variantId?.toLowerCase().includes(searchQuery.toLowerCase())
+    item.itemId?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const getStockStatusColor = (available: number) => {
@@ -76,22 +115,24 @@ const InventoryPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Location Tabs */}
-      <div className="flex gap-2 border-b border-white/10">
-        {tabs.map(t => (
-          <button 
-            key={t} 
-            onClick={() => setActiveTab(t)} 
-            className={`px-5 py-2.5 text-sm font-medium transition-all duration-200 border-b-2 ${
-              t === activeTab 
-                ? 'border-[#0066CC] text-white' 
-                : 'border-transparent text-gray-400 hover:text-white hover:border-white/20'
-            }`}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
+      {/* Store Tabs */}
+      {stores.length > 0 && (
+        <div className="flex gap-2 border-b border-white/10 overflow-x-auto">
+          {stores.map(store => (
+            <button 
+              key={store.storeId} 
+              onClick={() => setActiveStore(store.storeId)} 
+              className={`px-5 py-2.5 text-sm font-medium transition-all duration-200 border-b-2 whitespace-nowrap ${
+                store.storeId === activeStore 
+                  ? 'border-[#0066CC] text-white' 
+                  : 'border-transparent text-gray-400 hover:text-white hover:border-white/20'
+              }`}
+            >
+              {store.storeCode} - {store.location.district}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Inventory Table */}
       {loading && (
@@ -117,10 +158,13 @@ const InventoryPage: React.FC = () => {
               <thead className="bg-[rgba(20,40,70,0.7)] border-b border-white/10">
                 <tr>
                   <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-300 uppercase tracking-wider">
-                    Variant ID
+                    Item ID
                   </th>
                   <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-300 uppercase tracking-wider">
-                    On Hand
+                    In Stock
+                  </th>
+                  <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-300 uppercase tracking-wider">
+                    Ideal Stock
                   </th>
                   <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-300 uppercase tracking-wider">
                     Reserved
@@ -131,49 +175,50 @@ const InventoryPage: React.FC = () => {
                   <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-300 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-300 uppercase tracking-wider">
-                    Last Updated
-                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {filtered.map(i => (
-                  <tr 
-                    key={`${i.variantId}-${i.locationId}`} 
-                    className="hover:bg-white/5 transition-colors"
-                  >
-                    <td className="px-5 py-4">
-                      <div className="font-mono text-sm text-white font-medium">{i.variantId}</div>
-                    </td>
-                    <td className="px-5 py-4">
-                      <div className="text-sm text-gray-200 font-medium">{i.onHand}</div>
-                    </td>
-                    <td className="px-5 py-4">
-                      <div className="text-sm text-gray-200">{i.reserved}</div>
-                    </td>
-                    <td className="px-5 py-4">
-                      <div className={`text-sm font-semibold ${getStockStatusColor(i.available)}`}>
-                        {i.available}
-                      </div>
-                    </td>
-                    <td className="px-5 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        i.available === 0 
-                          ? 'bg-red-500/20 text-red-300 border border-red-500/30' 
-                          : i.available < 10 
-                          ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30' 
-                          : 'bg-green-500/20 text-green-300 border border-green-500/30'
-                      }`}>
-                        {i.available === 0 ? 'Out of Stock' : i.available < 10 ? 'Low Stock' : 'In Stock'}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4">
-                      <div className="text-xs text-gray-400">
-                        {new Date(i.updatedAt).toLocaleDateString()} {new Date(i.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {filtered.map(i => {
+                  const stockPercentage = (i['in-stock'] / i['ideal-stock']) * 100;
+                  const isLowStock = stockPercentage < 50;
+                  const isOutOfStock = i.availableQty === 0;
+                  
+                  return (
+                    <tr 
+                      key={`${i.storeId}-${i.itemId}`} 
+                      className="hover:bg-white/5 transition-colors"
+                    >
+                      <td className="px-5 py-4">
+                        <div className="font-mono text-sm text-white font-medium">{i.itemId}</div>
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="text-sm text-gray-200 font-medium">{i['in-stock']}</div>
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="text-sm text-gray-400">{i['ideal-stock']}</div>
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="text-sm text-gray-200">{i.reservedQty}</div>
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className={`text-sm font-semibold ${getStockStatusColor(i.availableQty)}`}>
+                          {i.availableQty}
+                        </div>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          isOutOfStock
+                            ? 'bg-red-500/20 text-red-300 border border-red-500/30' 
+                            : isLowStock
+                            ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30' 
+                            : 'bg-green-500/20 text-green-300 border border-green-500/30'
+                        }`}>
+                          {isOutOfStock ? 'Out of Stock' : isLowStock ? 'Low Stock' : 'In Stock'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

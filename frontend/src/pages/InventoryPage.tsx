@@ -90,7 +90,7 @@ const InventoryPage: React.FC = () => {
         <input 
           value={searchQuery} 
           onChange={e => setSearchQuery(e.target.value)} 
-          placeholder="Search by variant ID..." 
+          placeholder="Search by item ID..." 
           className="bg-[rgba(30,50,80,0.5)] border border-white/30 focus:border-[#0066CC] focus:ring-2 focus:ring-[#0066CC]/40 rounded-lg px-4 py-2 text-sm text-white placeholder:text-gray-400 outline-none w-64"
         />
       </div>

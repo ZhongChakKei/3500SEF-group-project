@@ -33,6 +33,8 @@ export interface Item {
   itemName: string;
   itemType: string;
   unitPrice: number;
+  imageUrl?: string;
+  status?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -70,6 +72,45 @@ export const itemsApi = {
   delete: async (itemId: string): Promise<void> => {
     const client = getApiClient();
     await client.delete(`/api/items/${itemId}`);
+  },
+
+  // Add new product with all details
+  addProduct: async (productData: {
+    itemId: string;
+    itemName: string;
+    itemType: string;
+    unitPrice: number;
+    imageUrl?: string;
+  }): Promise<Item> => {
+    const client = getApiClient();
+    const response = await client.post('/api/items', productData);
+    return response.data.data;
+  },
+
+  // Modify product details
+  modifyProduct: async (itemId: string, updates: {
+    itemName?: string;
+    itemType?: string;
+    unitPrice?: number;
+    imageUrl?: string;
+  }): Promise<Item> => {
+    const client = getApiClient();
+    const response = await client.put(`/api/items/${itemId}`, updates);
+    return response.data.data;
+  },
+
+  // Archive product (soft delete by marking status)
+  archiveProduct: async (itemId: string): Promise<Item> => {
+    const client = getApiClient();
+    const response = await client.put(`/api/items/${itemId}`, { status: 'ARCHIVED' });
+    return response.data.data;
+  },
+
+  // Unarchive product
+  unarchiveProduct: async (itemId: string): Promise<Item> => {
+    const client = getApiClient();
+    const response = await client.put(`/api/items/${itemId}`, { status: 'ACTIVE' });
+    return response.data.data;
   }
 };
 
@@ -121,6 +162,38 @@ export const storesApi = {
   delete: async (storeId: string): Promise<void> => {
     const client = getApiClient();
     await client.delete(`/api/stores/${storeId}`);
+  },
+
+  // Close store (set status to CLOSED)
+  closeStore: async (storeId: string): Promise<Store> => {
+    const client = getApiClient();
+    const response = await client.put(`/api/stores/${storeId}`, { status: 'CLOSED' });
+    return response.data.data;
+  },
+
+  // Reopen store (set status to OPEN)
+  reopenStore: async (storeId: string): Promise<Store> => {
+    const client = getApiClient();
+    const response = await client.put(`/api/stores/${storeId}`, { status: 'OPEN' });
+    return response.data.data;
+  },
+
+  // Create new store with complete data
+  createNewStore: async (storeData: {
+    storeCode: string;
+    location: {
+      addressLine1: string;
+      district: string;
+      city: string;
+    };
+    status?: string;
+  }): Promise<Store> => {
+    const client = getApiClient();
+    const response = await client.post('/api/stores', {
+      ...storeData,
+      status: storeData.status || 'OPEN'
+    });
+    return response.data.data;
   }
 };
 
@@ -131,7 +204,6 @@ export interface Inventory {
   itemId: string;
   'in-stock': number;
   'ideal-stock': number;
-  reservedQty: number;
   availableQty: number;
   updatedAt?: string;
 }
@@ -161,7 +233,6 @@ export const inventoryApi = {
     itemId: string;
     inStock?: number;
     idealStock?: number;
-    reservedQty?: number;
     availableQty?: number;
   }): Promise<Inventory> => {
     const client = getApiClient();
@@ -173,7 +244,6 @@ export const inventoryApi = {
   update: async (storeId: string, itemId: string, updates: {
     inStock?: number;
     idealStock?: number;
-    reservedQty?: number;
   }): Promise<Inventory> => {
     const client = getApiClient();
     const response = await client.put(`/api/inventory/${storeId}/${itemId}`, updates);

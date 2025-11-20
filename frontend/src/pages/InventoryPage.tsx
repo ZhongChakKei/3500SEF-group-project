@@ -20,7 +20,6 @@ interface InventoryRecord {
   itemId: string;
   'in-stock': number;
   'ideal-stock': number;
-  reservedQty: number;
   availableQty: number;
   updatedAt?: string;
 }
@@ -66,9 +65,8 @@ const InventoryPage: React.FC = () => {
   const stats = useMemo(() => {
     const totalItems = items.length;
     const totalOnHand = items.reduce((sum, item) => sum + (item['in-stock'] || 0), 0);
-    const totalReserved = items.reduce((sum, item) => sum + (item.reservedQty || 0), 0);
     const lowStock = items.filter(item => item.availableQty < (item['ideal-stock'] * 0.5)).length;
-    return { totalItems, totalOnHand, totalReserved, lowStock };
+    return { totalItems, totalOnHand, lowStock };
   }, [items]);
 
   const filtered = items.filter(item => 
@@ -96,7 +94,7 @@ const InventoryPage: React.FC = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="p-4 rounded-lg bg-[rgba(30,50,80,0.6)] border border-white/10 shadow-sm">
           <div className="text-sm text-gray-300 mb-1">Total Items</div>
           <div className="text-2xl font-semibold text-white">{stats.totalItems}</div>
@@ -104,10 +102,6 @@ const InventoryPage: React.FC = () => {
         <div className="p-4 rounded-lg bg-[rgba(30,50,80,0.6)] border border-white/10 shadow-sm">
           <div className="text-sm text-gray-300 mb-1">Total On Hand</div>
           <div className="text-2xl font-semibold text-white">{stats.totalOnHand}</div>
-        </div>
-        <div className="p-4 rounded-lg bg-[rgba(30,50,80,0.6)] border border-white/10 shadow-sm">
-          <div className="text-sm text-gray-300 mb-1">Reserved</div>
-          <div className="text-2xl font-semibold text-white">{stats.totalReserved}</div>
         </div>
         <div className="p-4 rounded-lg bg-[rgba(30,50,80,0.6)] border border-white/10 shadow-sm">
           <div className="text-sm text-gray-300 mb-1">Low Stock Alerts</div>
@@ -167,9 +161,6 @@ const InventoryPage: React.FC = () => {
                     Ideal Stock
                   </th>
                   <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-300 uppercase tracking-wider">
-                    Reserved
-                  </th>
-                  <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-300 uppercase tracking-wider">
                     Available
                   </th>
                   <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-300 uppercase tracking-wider">
@@ -196,9 +187,6 @@ const InventoryPage: React.FC = () => {
                       </td>
                       <td className="px-5 py-4">
                         <div className="text-sm text-gray-400">{i['ideal-stock']}</div>
-                      </td>
-                      <td className="px-5 py-4">
-                        <div className="text-sm text-gray-200">{i.reservedQty}</div>
                       </td>
                       <td className="px-5 py-4">
                         <div className={`text-sm font-semibold ${getStockStatusColor(i.availableQty)}`}>

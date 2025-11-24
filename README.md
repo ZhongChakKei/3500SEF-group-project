@@ -25,17 +25,35 @@ To extend: copy additional JSON from `dataset/` to `LocalDemo/src/data/` and add
 
 # Distributed Inventory & Sales Management System
 
-A full-stack serverless inventory management application built with React, AWS Lambda, DynamoDB, and Cognito authentication. Features real-time stock tracking, product/variant management, and multi-location inventory with reservation capabilities.
+A full-stack serverless inventory management application built with React, AWS Lambda, DynamoDB, and Cognito authentication. Features real-time stock tracking, product/variant management, multi-store inventory, and comprehensive sales analytics.
 
 ## 🚀 Features
 
 - **Authentication**: AWS Cognito OAuth 2.0 with PKCE flow and Hosted UI
-- **Product Management**: Browse products, view variants with detailed specifications, add new products and variants
-- **Inventory Tracking**: Real-time stock levels across multiple warehouse locations
-- **Stock Reservation**: Reserve inventory with conflict detection (409 handling)
-- **Order Management**: Create and track orders with line items
+- **Product Management**: 
+  - Browse products with image support
+  - Add new products with full details (ID, name, type, price, images)
+  - Modify existing products
+  - Archive/unarchive products (soft delete)
+  - Filter between active and archived products
+- **Store Management**:
+  - Create new stores with location details
+  - Close/reopen stores with status tracking
+  - Multi-store inventory tracking
+  - Store-specific sales analytics
+- **Inventory Tracking**: 
+  - Real-time stock levels across multiple stores
+  - Ideal stock vs. actual stock comparison
+  - Available quantity tracking (removed reserved quantity)
+  - Low stock alerts and notifications
+  - Store-specific inventory views with tabs
+- **Sales Dashboard**:
+  - Daily sales charts with trend visualization
+  - Recent sales table with store and item details
+  - Summary cards for total sales, tracked items, and low stock alerts
+  - Week-long sales data across multiple stores
 - **Protected Routes**: Role-based access control with automatic token refresh
-- **Modern UI**: Responsive design with TailwindCSS, loading skeletons, and smooth animations
+- **Modern UI**: Responsive design with TailwindCSS, loading skeletons, smooth animations, and modal forms
 
 ## 🏗️ Architecture
 
@@ -257,50 +275,49 @@ Click **Save and deploy**. Your app will be available at: `https://<app-id>.ampl
 
 ### Step 5: Load Sample Data
 
+The `dataset/` folder contains pre-populated mock data for demonstration:
+
+#### Available Sample Data
+- **items.json**: 3 products (Bottled Water, Potato Chips, Canned Coffee) with images
+- **stores.json**: 2 stores (HKS1 - Central, HKS2 - Causeway Bay)
+- **storeStocks.json**: Inventory levels for all items across both stores
+- **storeSales.json**: 7 days of sales data (Nov 16-22, 2025) for both stores
+
 #### Option A: Use the UI
 1. Log in to your deployed app
-2. Navigate to **Products** → **+ Add Product**
-3. Fill in product details and submit
-4. On product detail page → **+ Add Variant**
+2. **Create Stores**:
+   - Navigate to **Stores** → **+ Create New Store**
+   - Fill in store details (code, address, district, city)
+3. **Add Products**:
+   - Navigate to **Products** → **+ Add Product**
+   - Fill in product details (ID, name, type, price, image URL)
+   - Upload product images to `frontend/image/` directory
+4. **Manage Inventory**:
+   - Navigate to **Inventory** → Select store
+   - Update stock levels for each item
 
-#### Option B: Bulk Import Script
-Create `scripts/loadData.mjs`:
-```javascript
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, BatchWriteCommand } from '@aws-sdk/lib-dynamodb';
-import fs from 'fs';
+#### Option B: Bulk Import via API
+The dataset files can be imported programmatically via POST requests to your Lambda API:
 
-const client = new DynamoDBClient({ region: 'us-east-2' });
-const ddb = DynamoDBDocumentClient.from(client);
-
-const products = JSON.parse(fs.readFileSync('../dataset/products.json', 'utf8'));
-
-const items = products.map(p => ({
-  PutRequest: {
-    Item: {
-      PK: 'TYPE#PRODUCT',
-      SK: `PRODUCT#${p.product_id}`,
-      productId: p.product_id,
-      title: p.title,
-      brand: p.brand,
-      category: p.category,
-      default_image: p.default_image
-    }
-  }
-}));
-
-// Batch write in chunks of 25
-for (let i = 0; i < items.length; i += 25) {
-  await ddb.send(new BatchWriteCommand({
-    RequestItems: { 'dist-inventory': items.slice(i, i + 25) }
-  }));
-}
-console.log('Data loaded!');
+**Import Items:**
+```bash
+curl -X POST https://your-lambda-url/api/items \
+  -H "Content-Type: application/json" \
+  -d @dataset/items.json
 ```
 
-Run:
+**Import Stores:**
 ```bash
-node scripts/loadData.mjs
+curl -X POST https://your-lambda-url/api/stores \
+  -H "Content-Type: application/json" \
+  -d @dataset/stores.json
+```
+
+**Import Inventory:**
+```bash
+curl -X POST https://your-lambda-url/api/inventory \
+  -H "Content-Type: application/json" \
+  -d @dataset/storeStocks.json
 ```
 
 ---
@@ -337,24 +354,32 @@ webApp/
 ├── frontend/                       # React frontend
 │   ├── public/
 │   │   └── _redirects             # SPA routing for Amplify
+│   ├── image/                     # Product images directory
+│   │   ├── 0001.png              # Bottled Water
+│   │   ├── 0002.png              # Potato Chips
+│   │   └── 0003.png              # Canned Coffee
 │   ├── src/
 │   │   ├── components/
-│   │   │   └── Layout.tsx         # Navigation and layout wrapper
+│   │   │   ├── Layout.tsx         # Navigation and layout wrapper
+│   │   │   ├── RecentSalesTable.tsx # Recent sales component
+│   │   │   ├── SalesChart.tsx     # Sales trend chart
+│   │   │   └── SummaryCard.tsx    # Dashboard summary cards
 │   │   ├── context/
 │   │   │   └── AuthContext.tsx    # Cognito OAuth provider
 │   │   ├── pages/
 │   │   │   ├── LandingPage.tsx    # Public home page
 │   │   │   ├── LoginPage.tsx      # Initiates OAuth flow
 │   │   │   ├── CallbackPage.tsx   # Handles OAuth redirect (5s delay)
-│   │   │   ├── DashboardPage.tsx  # Main dashboard
-│   │   │   ├── ProductsPage.tsx   # Product listing with Add button
+│   │   │   ├── DashboardPage.tsx  # Main dashboard with sales analytics
+│   │   │   ├── ProductsPage.tsx   # Product listing with add/edit/archive
+│   │   │   ├── StoresPage.tsx     # Store management with create/close
 │   │   │   ├── AddProductPage.tsx # Create new product form
 │   │   │   ├── ProductDetailPage.tsx # Variant details
 │   │   │   ├── AddVariantPage.tsx # Create new variant form
-│   │   │   └── InventoryPage.tsx  # Location-based inventory
+│   │   │   └── InventoryPage.tsx  # Multi-store inventory tracking
 │   │   ├── services/
-│   │   │   ├── apiClient.ts       # Axios with auth interceptor
-│   │   │   └── inventoryService.ts # API method wrappers
+│   │   │   ├── api.ts             # Comprehensive API client with all endpoints
+│   │   │   └── inventoryService.ts # Inventory-specific API methods
 │   │   ├── types/
 │   │   │   └── index.ts           # TypeScript interfaces
 │   │   ├── utils/
@@ -368,11 +393,11 @@ webApp/
 │   ├── authMiddleware.mjs         # JWT validation (optional)
 │   ├── package.json
 │   └── README.md
-├── dataset/                        # Sample CSV/JSON data
-│   ├── products.json
-│   ├── variants.json
-│   ├── inventory.json
-│   └── locations.json
+├── dataset/                        # Sample JSON data
+│   ├── items.json                 # Product items with images
+│   ├── stores.json                # Store locations (2 stores)
+│   ├── storeStocks.json           # Inventory levels per store
+│   └── storeSales.json            # 7 days of sales data
 └── amplify.yml                     # Amplify build configuration
 ```
 
@@ -393,58 +418,86 @@ webApp/
 
 ## 🛠️ API Endpoints (Lambda)
 
-### Products
-- **GET** `/products` - List all products
-- **POST** `/products` - Create new product
+### Items/Products
+- **GET** `/api/items` - List all items
+- **GET** `/api/items/:itemId` - Get single item
+- **POST** `/api/items` - Create new item
   ```json
   {
-    "product_id": "P-001",
-    "title": "iPhone 15 Pro",
-    "brand": "Apple",
-    "category": "Smartphone",
-    "default_image": "https://...",
-    "attributes": {"color": "Natural Titanium", "weight": "187g"}
+    "itemId": "0004",
+    "itemName": "Orange Juice 350ml",
+    "itemType": "DRINK",
+    "unitPrice": 10.5,
+    "imageUrl": "/image/0004.png"
   }
   ```
+- **PUT** `/api/items/:itemId` - Update item (modify product)
+  ```json
+  {
+    "itemName": "Orange Juice 500ml",
+    "unitPrice": 12.0
+  }
+  ```
+- **DELETE** `/api/items/:itemId` - Delete item
 
-### Variants
-- **GET** `/variants?product_id=P-001` - List variants for product
-- **POST** `/variants` - Create new variant
+### Stores
+- **GET** `/api/stores` - List all stores
+- **GET** `/api/stores/:storeId` - Get single store
+- **POST** `/api/stores` - Create new store
   ```json
   {
-    "variant_id": "V-001",
-    "product_id": "P-001",
-    "sku": "IPH15P-256-NT",
-    "color": "Natural Titanium",
-    "storage_gb": 256,
-    "ram_gb": 8,
-    "price": 999.00,
-    "cost": 750.00,
-    "barcode": "194253000000"
+    "storeCode": "HKS3",
+    "location": {
+      "addressLine1": "Shop 301, Tsim Sha Tsui Plaza",
+      "district": "Tsim Sha Tsui",
+      "city": "Hong Kong"
+    },
+    "status": "OPEN"
   }
   ```
+- **PUT** `/api/stores/:storeId` - Update store (close/reopen)
+  ```json
+  {
+    "status": "CLOSED"
+  }
+  ```
+- **DELETE** `/api/stores/:storeId` - Delete store
 
 ### Inventory
-- **GET** `/inventory?variant_id=V-001` - Get inventory for variant across locations
-- **GET** `/inventory?location_id=STO-CWB` - Get all inventory at location
-- **POST** `/reserve` - Reserve stock
+- **GET** `/api/inventory` - Get all inventory
+- **GET** `/api/inventory?storeId=store-001` - Get inventory for specific store
+- **GET** `/api/inventory?itemId=0001` - Get inventory for specific item
+- **GET** `/api/inventory/:storeId/:itemId` - Get specific inventory record
+- **POST** `/api/inventory` - Create or update inventory
   ```json
   {
-    "variantId": "V-001",
-    "locationId": "STO-CWB",
-    "qty": 2
+    "storeId": "store-001",
+    "itemId": "0001",
+    "inStock": 150,
+    "idealStock": 200,
+    "availableQty": 150
   }
   ```
-  Returns `409 Conflict` if insufficient available stock.
-
-### Orders
-- **POST** `/orders` - Create order
+- **PUT** `/api/inventory/:storeId/:itemId` - Update inventory quantities
   ```json
   {
-    "orderId": "ORD-12345",
-    "locationId": "STO-CWB",
-    "lines": [
-      {"variantId": "V-001", "qty": 1, "price": 999.00}
+    "inStock": 120,
+    "idealStock": 180
+  }
+  ```
+
+### Sales
+- **GET** `/api/sales` - Get all sales records
+- **GET** `/api/sales?storeId=store-001` - Get sales for specific store
+- **GET** `/api/sales?date=2025-11-22` - Get sales for specific date
+- **POST** `/api/sales` - Record new sale
+  ```json
+  {
+    "storeId": "store-001",
+    "salesDate": "2025-11-22",
+    "items": [
+      {"itemId": "0001", "salesQty": 35},
+      {"itemId": "0002", "salesQty": 18}
     ]
   }
   ```
@@ -509,20 +562,74 @@ The app includes a 5-second authentication delay after OAuth callback to ensure 
 ### Environment Variable Fallbacks
 `src/utils/env.ts` provides runtime fallbacks for redirect URIs using `window.location.origin` if `VITE_REDIRECT_URI` is not set. This helps with local development but should not be relied upon in production.
 
-### DynamoDB Schema (Single-Table Design)
+### Database Schema
+
+#### Items Collection
+```json
+{
+  "itemId": "0001",
+  "itemName": "Bottled Water 500ml",
+  "itemType": "DRINK",
+  "unitPrice": 8.5,
+  "imageUrl": "/image/0001.png",
+  "status": "ACTIVE" // or "ARCHIVED"
+}
 ```
-PK: TYPE#PRODUCT         SK: PRODUCT#{product_id}     → Product metadata
-PK: PRODUCT#{product_id} SK: VARIANT#{variant_id}     → Variant details
-PK: VARIANT#{variant_id} SK: LOCATION#{location_id}   → Inventory record
-PK: TYPE#LOCATION        SK: LOCATION#{location_id}   → Location metadata
+
+#### Stores Collection
+```json
+{
+  "storeId": "store-001",
+  "storeCode": "HKS1",
+  "location": {
+    "addressLine1": "Shop 101, Central Plaza",
+    "district": "Central",
+    "city": "Hong Kong"
+  },
+  "status": "OPEN" // or "CLOSED"
+}
+```
+
+#### Inventory Collection
+```json
+{
+  "storeId": "store-001",
+  "itemId": "0001",
+  "in-stock": 120,
+  "ideal-stock": 150,
+  "availableQty": 120
+}
+```
+
+#### Sales Collection
+```json
+{
+  "storeId": "store-001",
+  "salesDate": "2025-11-22",
+  "items": [
+    {
+      "itemId": "0001",
+      "salesQty": 35
+    }
+  ]
+}
 ```
 
 ### Adding New Features
 1. Update Lambda `index.mjs` with new routes
-2. Add corresponding service methods in `inventoryService.ts`
+2. Add corresponding service methods in `src/services/api.ts`
 3. Create UI components/pages as needed
-4. Update TypeScript types in `src/types/index.ts`
-5. Test locally, then deploy Lambda + redeploy Amplify
+4. Update TypeScript interfaces in `src/services/api.ts`
+5. Add product images to `frontend/image/` directory
+6. Test locally, then deploy Lambda + redeploy Amplify
+
+### Key UI Components
+- **Modal Forms**: Used for creating/editing stores and products
+- **Store Tabs**: Switch between different store locations in Inventory page
+- **Summary Cards**: Display key metrics on Dashboard and Inventory pages
+- **Sales Chart**: Line chart showing sales trends over time
+- **Recent Sales Table**: Displays latest transactions with store and item details
+- **Archive Toggle**: Switch between active and archived products
 
 ---
 
@@ -564,11 +671,60 @@ PK: TYPE#LOCATION        SK: LOCATION#{location_id}   → Location metadata
 This project is for educational purposes. Refer to your institution's guidelines for usage and distribution.
 
 ---
-_Sensitive identifiers (Function URL, User Pool ID, domain prefix) replaced with placeholders._
-- Implement order creation UI
-- Add SKU copy button & image loading from S3
-- Replace sequential variant inventory fetch with batched call
-- Add pagination and advanced filtering for products
+## 🎯 Recent Updates (November 2025)
 
-## License
+### Product Management Enhancements
+- ✅ Add new products with modal form (ID, name, type, price, image)
+- ✅ Edit existing products inline
+- ✅ Archive/unarchive products (soft delete with status tracking)
+- ✅ Toggle view between active and archived products
+- ✅ Product image support with display in grid layout
+- ✅ Visual indicators for archived products
+
+### Store Management Features
+- ✅ Create new stores with complete location details
+- ✅ Close stores (set status to CLOSED)
+- ✅ Reopen closed stores (set status back to OPEN)
+- ✅ Store listing with summary cards (Total, Open, Closed)
+- ✅ Search and filter stores by status
+- ✅ Beautiful card-based layout with status badges
+
+### Inventory Improvements
+- ✅ Removed `reservedQty` field (simplified to availableQty only)
+- ✅ Multi-store inventory tracking with store tabs
+- ✅ Summary cards showing total items, on hand, and low stock alerts
+- ✅ Store-specific inventory views
+- ✅ Real-time stock level updates
+
+### Sales Analytics
+- ✅ Dashboard with sales chart showing 7-day trends
+- ✅ Recent sales table with store, item, and quantity details
+- ✅ Mock data for 2 stores across 1 week (Nov 16-22, 2025)
+- ✅ Total sales summary cards
+
+### Data Updates
+- ✅ Added second store (HKS2 - Causeway Bay)
+- ✅ Product images linked to items (0001.png, 0002.png, 0003.png)
+- ✅ 7 days of sales data for both stores
+- ✅ Inventory levels populated for all items across both stores
+
+## 📋 Future Enhancements
+
+- [ ] Implement order creation UI with line items
+- [ ] Add pagination for large product/store lists
+- [ ] Advanced filtering and search capabilities
+- [ ] Export sales reports to CSV/Excel
+- [ ] Real-time notifications for low stock
+- [ ] Bulk inventory updates
+- [ ] Sales forecasting and analytics
+- [ ] Multi-user roles and permissions
+- [ ] Barcode scanning integration
+- [ ] Mobile-responsive improvements
+
+## 📄 License
+
 MIT (Educational demo)
+
+---
+
+_Sensitive identifiers (Function URL, User Pool ID, domain prefix) replaced with placeholders._

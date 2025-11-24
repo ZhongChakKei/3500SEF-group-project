@@ -1,11 +1,47 @@
 [
   {
     "storeId": "store-001",
-    "salesDate": "2025-10-30",
+    "salesDate": "2025-11-16",
     "items": [
       {
         "itemId": "0001",
-        "salesQty": 35
+        "salesQty": 28
+      },
+      {
+        "itemId": "0002",
+        "salesQty": 15
+      },
+      {
+        "itemId": "0003",
+        "salesQty": 19
+      }
+    ]
+  },
+  {
+    "storeId": "store-001",
+    "salesDate": "2025-11-17",
+    "items": [
+      {
+        "itemId": "0001",
+        "salesQty": 32
+      },
+      {
+        "itemId": "0002",
+        "salesQty": 20
+      },
+      {
+        "itemId": "0003",
+        "salesQty": 16
+      }
+    ]
+  },
+  {
+    "storeId": "store-001",
+    "salesDate": "2025-11-18",
+    "items": [
+      {
+        "itemId": "0001",
+        "salesQty": 25
       },
       {
         "itemId": "0002",
@@ -13,7 +49,205 @@
       },
       {
         "itemId": "0003",
+        "salesQty": 21
+      }
+    ]
+  },
+  {
+    "storeId": "store-001",
+    "salesDate": "2025-11-19",
+    "items": [
+      {
+        "itemId": "0001",
+        "salesQty": 30
+      },
+      {
+        "itemId": "0002",
         "salesQty": 22
+      },
+      {
+        "itemId": "0003",
+        "salesQty": 18
+      }
+    ]
+  },
+  {
+    "storeId": "store-001",
+    "salesDate": "2025-11-20",
+    "items": [
+      {
+        "itemId": "0001",
+        "salesQty": 35
+      },
+      {
+        "itemId": "0002",
+        "salesQty": 19
+      },
+      {
+        "itemId": "0003",
+        "salesQty": 24
+      }
+    ]
+  },
+  {
+    "storeId": "store-001",
+    "salesDate": "2025-11-21",
+    "items": [
+      {
+        "itemId": "0001",
+        "salesQty": 27
+      },
+      {
+        "itemId": "0002",
+        "salesQty": 16
+      },
+      {
+        "itemId": "0003",
+        "salesQty": 20
+      }
+    ]
+  },
+  {
+    "storeId": "store-001",
+    "salesDate": "2025-11-22",
+    "items": [
+      {
+        "itemId": "0001",
+        "salesQty": 33
+      },
+      {
+        "itemId": "0002",
+        "salesQty": 21
+      },
+      {
+        "itemId": "0003",
+        "salesQty": 17
+      }
+    ]
+  },
+  {
+    "storeId": "store-002",
+    "salesDate": "2025-11-16",
+    "items": [
+      {
+        "itemId": "0001",
+        "salesQty": 22
+      },
+      {
+        "itemId": "0002",
+        "salesQty": 18
+      },
+      {
+        "itemId": "0003",
+        "salesQty": 14
+      }
+    ]
+  },
+  {
+    "storeId": "store-002",
+    "salesDate": "2025-11-17",
+    "items": [
+      {
+        "itemId": "0001",
+        "salesQty": 26
+      },
+      {
+        "itemId": "0002",
+        "salesQty": 22
+      },
+      {
+        "itemId": "0003",
+        "salesQty": 19
+      }
+    ]
+  },
+  {
+    "storeId": "store-002",
+    "salesDate": "2025-11-18",
+    "items": [
+      {
+        "itemId": "0001",
+        "salesQty": 20
+      },
+      {
+        "itemId": "0002",
+        "salesQty": 16
+      },
+      {
+        "itemId": "0003",
+        "salesQty": 18
+      }
+    ]
+  },
+  {
+    "storeId": "store-002",
+    "salesDate": "2025-11-19",
+    "items": [
+      {
+        "itemId": "0001",
+        "salesQty": 24
+      },
+      {
+        "itemId": "0002",
+        "salesQty": 20
+      },
+      {
+        "itemId": "0003",
+        "salesQty": 15
+      }
+    ]
+  },
+  {
+    "storeId": "store-002",
+    "salesDate": "2025-11-20",
+    "items": [
+      {
+        "itemId": "0001",
+        "salesQty": 28
+      },
+      {
+        "itemId": "0002",
+        "salesQty": 24
+      },
+      {
+        "itemId": "0003",
+        "salesQty": 21
+      }
+    ]
+  },
+  {
+    "storeId": "store-002",
+    "salesDate": "2025-11-21",
+    "items": [
+      {
+        "itemId": "0001",
+        "salesQty": 21
+      },
+      {
+        "itemId": "0002",
+        "salesQty": 17
+      },
+      {
+        "itemId": "0003",
+        "salesQty": 16
+      }
+    ]
+  },
+  {
+    "storeId": "store-002",
+    "salesDate": "2025-11-22",
+    "items": [
+      {
+        "itemId": "0001",
+        "salesQty": 25
+      },
+      {
+        "itemId": "0002",
+        "salesQty": 19
+      },
+      {
+        "itemId": "0003",
+        "salesQty": 20
       }
     ]
   }

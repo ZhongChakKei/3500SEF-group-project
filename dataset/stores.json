@@ -8,5 +8,15 @@
       "city": "Hong Kong"
     },
     "status": "OPEN"
+  },
+  {
+    "storeId": "store-002",
+    "storeCode": "HKS2",
+    "location": {
+      "addressLine1": "Shop 205, Causeway Bay Plaza",
+      "district": "Causeway Bay",
+      "city": "Hong Kong"
+    },
+    "status": "OPEN"
   }
 ]

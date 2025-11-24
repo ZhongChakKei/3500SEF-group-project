@@ -4,14 +4,14 @@
     "itemId": "0001",
     "in-stock": 120,
     "ideal-stock": 150,
-    "availableQty": 115
+    "availableQty": 120
   },
   {
     "storeId": "store-001",
     "itemId": "0002",
     "in-stock": 60,
     "ideal-stock": 80,
-    "availableQty": 58
+    "availableQty": 60
   },
   {
     "storeId": "store-001",
@@ -19,5 +19,26 @@
     "in-stock": 40,
     "ideal-stock": 60,
     "availableQty": 40
+  },
+  {
+    "storeId": "store-002",
+    "itemId": "0001",
+    "in-stock": 95,
+    "ideal-stock": 120,
+    "availableQty": 95
+  },
+  {
+    "storeId": "store-002",
+    "itemId": "0002",
+    "in-stock": 75,
+    "ideal-stock": 90,
+    "availableQty": 75
+  },
+  {
+    "storeId": "store-002",
+    "itemId": "0003",
+    "in-stock": 52,
+    "ideal-stock": 70,
+    "availableQty": 52
   }
 ]

@@ -1,28 +1,3 @@
-# 🚀 Quick Start (Local Demo – No AWS Required)
-
-You can explore a simplified offline version in `LocalDemo/` with mock auth and sample data.
-test
-### Run Local Demo
-```powershell
-cd LocalDemo
-npm install
-npm run dev
-```
-Open the shown URL (typically http://localhost:5173).
-
-Features in demo:
-- Product list & detail (sample JSON)
-- Mock login/logout (no Cognito)
-
-Not included:
-- Real Cognito OAuth
-- Inventory reservations / orders
-- Tailwind styling (kept minimal)
-
-To extend: copy additional JSON from `dataset/` to `LocalDemo/src/data/` and add new Zustand stores & routes.
-
----
-
 # Distributed Inventory & Sales Management System
 
 A full-stack serverless inventory management application built with React, AWS Lambda, DynamoDB, and Cognito authentication. Features real-time stock tracking, product/variant management, multi-store inventory, and comprehensive sales analytics.

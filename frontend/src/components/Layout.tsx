@@ -16,7 +16,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       <header className="border-b border-surface-200/10 backdrop-blur bg-[rgba(10,18,28,0.85)] sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <span className="font-semibold text-white tracking-wide">Inventory & Sales</span>
+            <span className="font-semibold text-white tracking-wide">Inventory & Sales 3500SEF - Group 10</span>
             <nav className="flex gap-2 text-sm">
               {navItems.map(item => {
                 const isActive = location.pathname === item.path;
